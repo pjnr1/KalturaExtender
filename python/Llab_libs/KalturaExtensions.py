@@ -55,13 +55,16 @@ class KalturaExtender:
 
     client = NotImplemented
     ks = NotImplemented
+    categoryIds = NotImplemented
 
     def __init__(self):
-        s = self.load_kaltura_client_statics()
+        s = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_statics.secret'))
+        self.categoryIds = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
         # Initial API client setup
         cfg = KalturaConfiguration(s['partnerId'])
         cfg.serviceUrl = s['serviceUrl']
         self.client = KalturaClient(cfg)
+        # Start session
         self.ks = self.client.session.start(s['adminSecret'], s['userId'], KalturaSessionType.ADMIN, s['partnerId'])
         self.client.setKs(self.ks)
 
@@ -184,37 +187,23 @@ class KalturaExtender:
     
         return output
 
-    def getDualStreamEntries(self, printResult=True):
-        mediaFilter = KalturaMediaEntryFilter(mediaTypeEqual=1, tagsLike='DualStream-child')
-        res = self.get_kaltura_client().media.list(mediaFilter)
-    
-        i = 0
-        output = {}
-        for media in res.objects:
-            output[media.id] = media
-    
-            if printResult:
-                printKalturaObject(media, counter=i)
-    
-            i += 1
-    
-        return output
-    
-    def getDualStreamStreams(self, printResult=True):
-        mediaFilter = KalturaMediaEntryFilter(mediaTypeEqual=201, tagsLike='dualstream')
-        res = self.get_kaltura_client().media.list(mediaFilter)
-        
-        i = 0
-        output = {}
-        for media in res.objects:
-            output[media.id] = media
-            
-            if printResult:
-                printKalturaObject(media, counter=i)
-            
-            i += 1
-        
-        return output
+    # DEPRECATED
+    # def getDualStreamEntries(self, printResult=True):
+    #     mediaFilter = KalturaMediaEntryFilter(mediaTypeEqual=1, tagsLike='DualStream-child')
+    #     res = self.get_kaltura_client().media.list(mediaFilter)
+    #
+    #     i = 0
+    #     output = {}
+    #     for media in res.objects:
+    #         output[media.id] = media
+    #
+    #         if printResult:
+    #             printKalturaObject(media, counter=i)
+    #
+    #         i += 1
+    #
+    #     return output
+
 
     def setParentEntryId(self, parent, child, entryType='media'):
         modifierEntry = KalturaMediaEntry()
@@ -232,6 +221,48 @@ class KalturaExtender:
 
     def deleteEntry(self, id, entryType):
         return getattr(self.client, entryType).delete(id)
+
+
+    def getDualStreamChannels(self):
+        cats = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
+
+        return self.getEntries(filters={'categoriesIdsMatchAnd': self.categoryIds['Streams'],
+                                        'mediaTypeEqual': 201},
+                               entryType='liveStream')
+
+    def getDualStreamEntryPairs(self):
+        streamEntries = self.getDualStreamChannels()
+
+        readyEntries = {}
+        for streams in streamEntries.items():
+            listOfEntries = self.getEntries(filters={'rootEntryIdEqual': streams[0],
+                                                     'categoriesIdsNotContains': self.categoryIds['Recordings'],
+                                                     'mediaTypeEqual': 1,
+                                                     'statusEqual': KalturaEntryStatus.READY})
+
+            for entry in listOfEntries.items():
+                readyEntries[entry[0]] = entry[1]
+
+        contentEntries = []
+        cameraEntries = []
+        pairedEntries = []
+        for entry in readyEntries.items():
+            if 'Content' in entry[1].name:
+                contentEntries.append(entry)
+            if 'Camera' in entry[1].name:
+                cameraEntries.append(entry)
+
+        for cont in contentEntries:
+            str1 = re.sub(r' [0-9]+', '', cont[1].name)
+            str1 = str1.replace('Content', '').replace(' ', '')
+            for cam in cameraEntries:
+                str2 = cam[1].name.replace('Camera', '').replace(' ', '')
+                if str1 in str2:
+                    if self.compareTimeStamps(cont[1].createdAt, cam[1].createdAt, self.TIMESTAMP_RANGE):
+                        cameraEntries.remove(cam)
+                        pairedEntries.append((cont, cam))
+
+        return pairedEntries
 
 
 def mergeDualStreamPairs(verbose=True):
