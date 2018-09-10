@@ -1,9 +1,13 @@
+import csv
 import re
 import os
 import datetime
 from Llab_libs import FuncDecorators
 
 __basepath__ = os.path.dirname(os.path.realpath(__file__))
+listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
+                                'statusUpdatedAt', 'deletedAt', 'mediaDate',
+                                'firstBroadcast', 'lastBroadcast']
 
 # Kaltura imports
 from Kaltura.KalturaClient import *
@@ -17,6 +21,8 @@ def printKalturaObject(object, specificVariables=None, counter=None, levelOfInde
     def printOut(a, values):
         if 'Kaltura' in type(values).__name__:
             print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.getValue().__str__()))
+        elif any(x in a for x in listOfUnixTimeStampVariables):
+            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, datetime.datetime.fromtimestamp(values).strftime("%Y-%m-%d %H:%M:%S")))
         else:
             print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.__str__()))
 
@@ -265,6 +271,29 @@ class KalturaExtender:
         return pairedEntries
 
 
+def exportToCsv(list, path, specificVariables=None):
+    if specificVariables is None:
+        return None
+
+    def getStr(value):
+        if 'Kaltura' in type(value).__name__:
+            return value.getValue().__str__()
+        else:
+            return value.__str__()
+        
+    with open(path, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=specificVariables)
+        writer.writeheader()
+        for x, object in list.items():
+            row = {}
+            for p in vars(object).items():
+                if p[0] in specificVariables:
+                    row[p[0]] = getStr(p[1])
+                    
+            writer.writerow(row)
+
+        
+
 def mergeDualStreamPairs(verbose=True):
     if verbose:
         print(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
@@ -323,4 +352,3 @@ def mergeDualStreamPairs(verbose=True):
               'out of',
               len(pairedEntries),
               'entries')
-
