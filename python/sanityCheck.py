@@ -10,11 +10,27 @@ def now():
 if __name__ == '__main__':
     print(now(), 'Running', __file__)
     print()
-
+    
+    print(now(), 'Setting up client')
     client = KalturaExtender()
-    print(client.getDualStreamChannels())
+    print()
+    
+    print(now(), 'Get dualstream channels')
+    res = client.getDualStreamChannels()
+    for x, y in res.items():
+        printKalturaObject(y, specificVariables=['id', 'name'])
+
     print()
 
-    print(client.getDualStreamEntryPairs())
+    #print(now(), 'Get dualstream entries')
+    #res = client.getDualStreamEntryPairs()
+    #for x in res:
+    #    print(x)
+#
+    #print()
+
+    print(now(), 'Get existing users')
+    client.getExistingUsers(specificVariables=['id', 'fullName', 'screenName', 'email', 'createdAt'])
     print()
 
+    
