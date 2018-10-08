@@ -1,4 +1,5 @@
 import datetime
+import sys
 
 # Kaltura helpers
 from Llab_libs.KalturaExtensions import *
@@ -15,22 +16,24 @@ if __name__ == '__main__':
     client = KalturaExtender()
     print()
     
-    print(now(), 'Get dualstream channels')
-    res = client.getDualStreamChannels()
-    for x, y in res.items():
-        printKalturaObject(y, specificVariables=['id', 'name'])
+    if 'dualstream' in sys.argv:
+        print(now(), 'Get dualstream channels')
+        res1 = client.getDualStreamChannels()
+        for x1, y1 in res1.items():
+            printKalturaObject(y1, specificVariables=['id', 'name'])
+            res2 = client.getEntries(filters={'rootEntryIdEqual': x1,
+                                              'mediaTypeEqual': 1})
+            for x2, y2 in res2.items():       
+                printKalturaObject(y2, levelOfIndent=1, specificVariables=['id', 'name', 'createdAt'])                          
+                res3 = client.getEntries(filters={'parentEntryIdEqual': x2,
+                                                  'mediaTypeEqual': 1})
+                for x3, y3 in res3.items():       
+                    printKalturaObject(y3, levelOfIndent=2, specificVariables=['id', 'name', 'parentEntryId', 'createdAt', 'status', 'duration', 'durationType', 'mediaType'])  
+                    
+                    print()
 
-    print()
 
-    #print(now(), 'Get dualstream entries')
-    #res = client.getDualStreamEntryPairs()
-    #for x in res:
-    #    print(x)
-#
-    #print()
-
-    print(now(), 'Get existing users')
-    client.getExistingUsers(specificVariables=['id', 'fullName', 'screenName', 'email', 'createdAt'])
-    print()
-
-    
+    if 'users' in sys.argv:
+        print(now(), 'Get existing users')
+        client.getExistingUsers(specificVariables=['id', 'fullName', 'screenName', 'email', 'createdAt'])
+        print()

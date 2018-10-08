@@ -1,8 +1,11 @@
 import csv
 import re
 import os
-import datetime
+import traceback
+from datetime import datetime
 from Llab_libs import FuncDecorators
+from Llab_libs.statics_helper import load_statics
+from Llab_libs.mail_helper import LLabMailHelper
 
 __basepath__ = os.path.dirname(os.path.realpath(__file__))
 listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
@@ -22,7 +25,8 @@ def printKalturaObject(object, specificVariables=None, counter=None, levelOfInde
         if 'Kaltura' in type(values).__name__:
             print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.getValue().__str__()))
         elif any(x in a for x in listOfUnixTimeStampVariables):
-            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, datetime.datetime.fromtimestamp(values).strftime("%Y-%m-%d %H:%M:%S")))
+            dt = datetime.fromtimestamp(values).strftime("%Y-%m-%d %H:%M:%S")
+            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, dt))
         else:
             print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.__str__()))
 
@@ -56,6 +60,9 @@ def load_kaltura_statics(path):
     return s
 
 
+errorMailer = LLabMailHelper()
+
+
 class KalturaExtender:
     TIMESTAMP_RANGE = 30
 
@@ -63,15 +70,15 @@ class KalturaExtender:
     ks = NotImplemented
     categoryIds = NotImplemented
 
-    def __init__(self):
-        s = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_statics.secret'))
-        self.categoryIds = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
+    def __init__(self, log=False):
+        s = load_statics(os.path.join(__basepath__, 'kaltura_statics.secret'))
+        self.categoryIds = load_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
         # Initial API client setup
         cfg = KalturaConfiguration(s['partnerId'])
         cfg.serviceUrl = s['serviceUrl']
         self.client = KalturaClient(cfg)
         # Start session
-        self.ks = self.client.session.start(s['adminSecret'], s['userId'], KalturaSessionType.ADMIN, s['partnerId'])
+        self.ks = self.client.session.start(s['adminSecret'], None, KalturaSessionType.ADMIN, s['partnerId'])
         self.client.setKs(self.ks)
 
     @staticmethod
@@ -101,10 +108,10 @@ class KalturaExtender:
 
     def generateThumbAndSetAsDefault(self, id, paramId=None):
         if not paramId:
-            pIds = load_kaltura_statics("kaltura_thumbParamsIds")
+            pIds = load_statics("kaltura_thumbParamsIds")
             paramId = pIds['default']
         elif type(paramId) is type(str):
-            pIds = load_kaltura_statics("kaltura_thumbParamsIds")
+            pIds = load_statics("kaltura_thumbParamsIds")
             paramId = pIds[paramId]
 
         try:
@@ -114,11 +121,9 @@ class KalturaExtender:
         except:
             print('error', id)
 
-
-    def get_kaltura_client(self):
+    def getClient(self):
         if self.client is NotImplemented:
             raise RuntimeError('KalturaExtender::client not loaded!')
-        
         return self.client
 
     def getEntries(self, filters=None, entryType='media', printResult=False, specificVariables=None):
@@ -141,17 +146,17 @@ class KalturaExtender:
     def getExistingLiveEntries(self, printResult=True, specificVariables=None):
         f = KalturaLiveEntryFilter()
         res = self.get_kaltura_client().liveStream.list(f)
-    
+
         i = 0
         output = {}
         for stream in res.objects:
             output[stream.id] = stream
-    
+
             if printResult:
                 printKalturaObject(stream, counter=i, specificVariables=specificVariables)
-    
+
             i += 1
-    
+
         return output
 
     def getExistingUsers(self, printResult=True, onlyAdmins=False, specificVariables=None):
@@ -164,52 +169,34 @@ class KalturaExtender:
         for user in res.objects:
             if onlyAdmins and not user.isAdmin:
                 continue
-    
+
             output[user.id] = user
-    
+
             if printResult:
                 printKalturaObject(user, specificVariables=specificVariables, counter=i)
-    
+
             i += 1
-    
+
         return output
 
     def getUsersEntries(self, username, filters=None, printResult=False, specificVariables=None):
         mediaFilter = KalturaMediaEntryFilter()
         mediaFilter.userIdEqual = username
         self.apply_filter(mediaFilter, filters)
-    
+
         res = self.get_kaltura_client().media.list(mediaFilter)
-    
+
         i = 0
         output = {}
         for media in res.objects:
             output[media.id] = media
-    
+
             if printResult:
                 printKalturaObject(media, specificVariables=specificVariables, counter=i)
-    
+
             i += 1
-    
+
         return output
-
-    # DEPRECATED
-    # def getDualStreamEntries(self, printResult=True):
-    #     mediaFilter = KalturaMediaEntryFilter(mediaTypeEqual=1, tagsLike='DualStream-child')
-    #     res = self.get_kaltura_client().media.list(mediaFilter)
-    #
-    #     i = 0
-    #     output = {}
-    #     for media in res.objects:
-    #         output[media.id] = media
-    #
-    #         if printResult:
-    #             printKalturaObject(media, counter=i)
-    #
-    #         i += 1
-    #
-    #     return output
-
 
     def setParentEntryId(self, parent, child, entryType='media'):
         modifierEntry = KalturaMediaEntry()
@@ -230,7 +217,7 @@ class KalturaExtender:
 
 
     def getDualStreamChannels(self):
-        cats = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
+        cats = load_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
 
         return self.getEntries(filters={'categoriesIdsMatchAnd': self.categoryIds['Streams'],
                                         'mediaTypeEqual': 201},
@@ -280,7 +267,7 @@ def exportToCsv(list, path, specificVariables=None):
             return value.getValue().__str__()
         else:
             return value.__str__()
-        
+
     with open(path, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=specificVariables)
         writer.writeheader()
@@ -289,17 +276,16 @@ def exportToCsv(list, path, specificVariables=None):
             for p in vars(object).items():
                 if p[0] in specificVariables:
                     row[p[0]] = getStr(p[1])
-                    
+
             writer.writerow(row)
 
-        
 
 def mergeDualStreamPairs(verbose=True):
     if verbose:
-        print(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
               'Searching for DualStream entries')
 
-    cats = load_kaltura_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
+    cats = load_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
     client = KalturaExtender()
 
     streamEntries = client.getEntries(filters={'categoriesIdsMatchAnd': cats['Streams'],
@@ -341,14 +327,87 @@ def mergeDualStreamPairs(verbose=True):
         try:
             client.setParentEntryId(parent=parent[1].id, child=child[1].id)
             client.updateEntry(id=parent[1].id, updates={'categoriesIds': cats['Recordings']})
+            print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                  'Updated:', end=' ')
+            print('parent:', parent[0], parent[1].name, end='')
+            print('child:', child[0], child[1].name)
         except Exception as e:
             updateErrorCount += 1
-            errorList.append(e)
+            tb = traceback.format_exc()
+            errorList.append(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')) + " " + str(e))
+            errorList.append(tb)
 
-    if verbose:
-        print(str(datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+    if errorList:
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+              'Encountered following errors')
+
+        for e in errorList:
+            print('-----')
+            print(e)
+
+        errorMailer.send_error_mail(__file__, errorList)
+
+    if verbose or len(pairedEntries):
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
               'Updated',
               len(pairedEntries)-updateErrorCount,
               'out of',
               len(pairedEntries),
               'entries')
+
+
+def generateThumbForAll(verbose=True):
+    raise NotImplementedError
+
+    if verbose:
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+              'Searching for entries without thumbs')
+
+    cats = load_statics(os.path.join(__basepath__, 'kaltura_categoryIds'))
+    client = KalturaExtender()
+
+    streamEntries = client.getEntries(filters={'categoriesIdsMatchAnd': cats['Streams'],
+                                               'mediaTypeEqual': 201},
+                                      entryType='liveStream')
+
+    readyEntries = {}
+    for streams in streamEntries.items():
+        listOfEntries = client.getEntries(filters={'rootEntryIdEqual': streams[0],
+                                                   'mediaTypeEqual': 1,
+                                                   'statusEqual': KalturaEntryStatus.READY})
+
+        for entry in listOfEntries.items():
+            readyEntries[entry[0]] = entry[1]
+
+    if verbose:
+        for entries in readyEntries.items():
+            print(entries[0], entries[1].id)
+            thumbs = client.get_kaltura_client().thumbAsset.getByEntryId(entries[1].id)
+            for thumb in thumbs:
+                print(thumb.size)
+                print(datetime.fromtimestamp(thumb.createdAt).strftime("%Y-%m-%d %H:%M:%S"))
+
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+              'Found',
+              len(readyEntries),
+              'entries without thumbnails.')
+
+    return  # OBS OBS OBS RETURNS HERE !!!
+
+    errorList = []
+    for entries in readyEntries.items():
+        try:
+            client.generateThumbAndSetAsDefault(id=entries, paramId=324)
+        except Exception as e:
+            errorList.append(e)
+
+    if errorList:
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            'Encountered following errors')
+
+        for i, e in enumerate(errorList):
+            print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')), i, e)
+
+    if verbose:
+        print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+              'Encountered following errors')
