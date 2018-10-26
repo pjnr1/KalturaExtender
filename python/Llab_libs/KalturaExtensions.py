@@ -298,7 +298,7 @@ class KalturaExtender:
             if mailerror:
                 self.errorMailer.send_error_mail(__file__, errorList)
 
-        if verbose or len(pairedEntries):
+        if verbose:
             print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                   'Updated',
                   len(pairedEntries) - updateErrorCount,
