@@ -18,7 +18,7 @@ if __name__ == '__main__':
     print()
 
     print(now(), 'Get all categories')
-    path = 'cats.csv'
+    path = '../csv_files/cats.csv'
     l = client.get_categories()
     print()
 

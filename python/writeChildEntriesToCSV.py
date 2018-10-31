@@ -37,13 +37,7 @@ if __name__ == '__main__':
         outdict[c[0]] = c[1]
 
     print(now(), 'Write csv', end='\n\n')
-    csvFilePath = os.path.join(__basepath__, '../../../kaltura_csv_out/dualstream-recordings.csv')
+    csvFilePath = '../csv_files/dualstream-recordings.csv'
     exportToCsv(outdict, csvFilePath)
 
     print(now(), 'Done writing', end='\n\n')
-
-    print(now(), 'Reading csv file', end='\n\n')
-    reader = csv.reader(open(csvFilePath), delimiter=',')
-    sortedlist = sorted(reader, key=operator.itemgetter(15), reverse=False)
-    for s in sortedlist:
-        print(s)

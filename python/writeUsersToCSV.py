@@ -17,10 +17,10 @@ if __name__ == '__main__':
     print()
 
     print(now(), 'Get existing users')
-    path = 'users.csv'
+    path = '../csv_files/users.csv'
     userList = client.get_users(printResult=False)
     print()
-    
+
     print(now(), 'Write existing users to csv')
     v = vars(userList['admin'])
     exportToCsv(userList, path, specificVariables=v)

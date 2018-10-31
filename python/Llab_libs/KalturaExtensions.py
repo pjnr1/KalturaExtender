@@ -201,12 +201,12 @@ class KalturaExtender:
         f = KalturaCategoryFilter()
         self.apply_filter(f, filters)
 
-        res = self.client.category.list(f, )
+        res = self.client.category.list(f)
 
         i = 0
         output = {}
-        for media in res.objects:
-            output[media.id] = media
+        for cats in res.objects:
+            output[cats.id] = cats
 
             i += 1
 
