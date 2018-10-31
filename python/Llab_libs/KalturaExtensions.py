@@ -366,7 +366,9 @@ class KalturaExtender:
         return self.update_entry(entryId=entryId, updates={'userId': userId})
 
     def set_entry_coeditors(self, entryId, userIdList):
-        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList, 'entitledUsersPublish': userIdList})
+        # Insert method to test
+        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList,
+                                                           'entitledUsersPublish': userIdList})
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
@@ -374,9 +376,9 @@ class KalturaExtender:
             self.set_entry_ownership(lms_owned_entryId, kms_userId)
             c = c + 1
         for kms_owned_entryId,entry in self.get_entries_by_user(kms_userId).items():
-            if lms_userId not in entry.entitledUsersEdit:
-                self.set_entry_coeditors(kms_owned_entryId, entry.entitledUsersEdit + ',' + lms_userId)
-            c = c + 1
+            if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
+                self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+                c = c + 1
         return c
 
     def update_dual_user_list(self):
