@@ -283,9 +283,7 @@ class KalturaExtender:
                 client.set_parent(parent=parent[1].id, child=child[1].id)
                 client.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
                 if self.logger is not NotImplemented:
-                    self.logger.info('{0} Updated:'.format(str(_now())))
-                    self.logger.info('\tparent: {0} | {1}'.format(parent[0], parent[1].name))
-                    self.logger.info('\tchild: {0} | {1}'.format(child[0], child[1].name))
+                    self.logger.info('Updated (parent: {0}) and (child: {0})'.format(parent[0], child[0]))
             except Exception as e:
                 updateErrorCount += 1
                 tb = traceback.format_exc()
@@ -312,8 +310,7 @@ class KalturaExtender:
 
         updatedCount = len(pairedEntries) - updateErrorCount
         totalCount = len(pairedEntries)
-        finalInfo = '{0} Updated {1} out of {2} entries'.format(str(_now()),
-                                                               str(updatedCount), str(totalCount))
+        finalInfo = 'Updated {0} out of {1} entries'.format(str(updatedCount), str(totalCount))
 
         if self.logger is not NotImplemented:
             if updatedCount != totalCount:
@@ -321,7 +318,7 @@ class KalturaExtender:
             else:
                 self.logger.info(finalInfo)
         if verbose:
-            print(finalInfo)
+            print(_now(), finalInfo)
 
     def get_dual_users(self):
         def list_duplicates_of(seq, item):
@@ -407,7 +404,7 @@ class KalturaExtender:
 
         if addedCount is 0:
             if self.logger is not NotImplemented:
-                log_str = "No new dual users added to list".format(addedCount)
+                log_str = "No new dual users added to list"
                 self.logger.info(log_str)
         else:
             if os.path.isfile(__dual_user_list__):
