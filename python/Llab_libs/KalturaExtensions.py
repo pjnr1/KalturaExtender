@@ -3,9 +3,12 @@ import re
 import os
 import traceback
 from datetime import datetime
+
+# LearningLab libraries
 from Llab_libs import FuncDecorators
-from Llab_libs.statics_helper import load_statics_old
+from Llab_libs.statics_helper import load_statics
 from Llab_libs.mail_helper import LLabMailHelper
+from Llab_libs.Logger import SimpleLogger
 
 # Kaltura imports
 from Kaltura.KalturaClient import *
@@ -27,7 +30,6 @@ def kalturaObjectValueToString(a, v):
         return datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
     else:
         return v.__str__()
-
 
 
 def printKalturaObject(object, specificVariables=None, counter=None, levelOfIndent=0):
@@ -56,19 +58,6 @@ def printKalturaObject(object, specificVariables=None, counter=None, levelOfInde
     print('')
 
 
-def load_kaltura_statics(path):
-    s = {}
-    with open(path, 'r') as f:
-        for line in f:
-            line = re.sub("[ '\n]", '', line)
-            (key, val) = line.split('=')
-            s[key] = val
-    return s
-
-
-
-
-
 class KalturaExtender:
     TIMESTAMP_RANGE = 30
 
@@ -78,28 +67,21 @@ class KalturaExtender:
     categoryIds = NotImplemented
 
     def __init__(self, log=False, errormail=False):
-        s = load_statics_old(os.path.join(__basepath__, 'kaltura_statics.secret'))
-        self.categoryIds = load_statics_old(os.path.join(__basepath__, 'kaltura_categoryIds'))
+        s = load_statics('kaltura_statics.secret')
+        self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
-        cfg = KalturaConfiguration(s['partnerId'])
-        cfg.serviceUrl = s['serviceUrl']
+        cfg = KalturaConfiguration(s.partnerId)
+        cfg.serviceUrl = s.serviceUrl
         self.client = KalturaClient(cfg)
         # Start session
-        self.ks = self.client.session.start(s['adminSecret'], None, KalturaSessionType.ADMIN, s['partnerId'])
+        self.ks = self.client.session.start(s.adminSecret, None, KalturaSessionType.ADMIN, s.partnerId)
         self.client.setKs(self.ks)
 
         if errormail:
             self.errorMailer = LLabMailHelper()
 
-    @staticmethod
-    def load_kaltura_client_statics():
-        s = {}
-        with open(os.path.join(__basepath__, 'kaltura_statics.secret'), 'r') as f:
-            for line in f:
-                line = re.sub("[ '\n]", '', line)
-                (key, val) = line.split('=')
-                s[key] = val
-        return s
+        if log:
+            self.logger = SimpleLogger(logfile='kaltura.log')
 
     @staticmethod
     def apply_filter(filter, filters):
@@ -115,23 +97,6 @@ class KalturaExtender:
         t0 = t1 - t2
         t0 = abs(t0)
         return not t0 > r
-
-    def generateThumbAndSetAsDefault(self, id, paramId=None):
-        return NotImplementedError
-        #
-        if not paramId:
-            pIds = load_statics_old("kaltura_thumbParamsIds")
-            paramId = pIds['default']
-        elif type(paramId) is type(str):
-            pIds = load_statics_old("kaltura_thumbParamsIds")
-            paramId = pIds[paramId]
-
-        try:
-            res = self.client.thumbAsset.generateByEntryId(entryId=id,
-                                                           destThumbParamsId=paramId)
-            self.client.thumbAsset.setAsDefault(res.id)
-        except:
-            print('error', id)
 
     def get_client(self):
         if self.client is NotImplemented:
@@ -244,9 +209,7 @@ class KalturaExtender:
         return output
 
     def get_dualstream_channels(self):
-        cats = load_statics_old(os.path.join(__basepath__, 'kaltura_categoryIds'))
-
-        return self.get_entries(filters={'categoriesIdsMatchAnd': self.categoryIds['Streams'],
+        return self.get_entries(filters={'categoriesIdsMatchAnd': self.categoryIds.Streams,
                                          'mediaTypeEqual': 201},
                                 entryType='liveStream')
 
@@ -256,7 +219,7 @@ class KalturaExtender:
         readyEntries = {}
         for streams in streamEntries.items():
             listOfEntries = self.get_entries(filters={'rootEntryIdEqual': streams[0],
-                                                      'categoriesIdsNotContains': self.categoryIds['Recordings'],
+                                                      'categoriesIdsNotContains': self.categoryIds.Recordings,
                                                       'mediaTypeEqual': 1,
                                                       'statusEqual': KalturaEntryStatus.READY})
 
@@ -284,13 +247,11 @@ class KalturaExtender:
 
         return pairedEntries
 
-
     def merge_dualstreams(self, verbose=True, mailerror=False):
         if verbose:
             print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                   'Searching for DualStream entries')
 
-        cats = load_statics_old(os.path.join(__basepath__, 'kaltura_categoryIds'))
         client = KalturaExtender()
 
         pairedEntries = client.get_dualstream_pairs()
@@ -300,7 +261,7 @@ class KalturaExtender:
         for parent, child in pairedEntries:
             try:
                 client.set_parent(parent=parent[1].id, child=child[1].id)
-                client.update_entry(id=parent[1].id, updates={'categoriesIds': cats['Recordings']})
+                client.update_entry(id=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
                 print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
                       'Updated:', end=' ')
                 print('| p:', parent[0], parent[1].name, end=' ')
@@ -354,10 +315,6 @@ def exportToCsv(list, path, specificVariables=None):
                     row[p[0]] = None
 
             writer.writerow(row)
-
-
-
-
 
 
 

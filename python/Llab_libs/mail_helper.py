@@ -1,9 +1,6 @@
 import smtplib
-import re
-import os
 
-from Llab_libs.statics_helper import load_statics3
-from email.message import EmailMessage
+from Llab_libs.statics_helper import load_statics
 
 
 class LLabMailHelper:
@@ -11,7 +8,7 @@ class LLabMailHelper:
 
     def __init__(self):
         # load secrets
-        self.s = load_statics3('llab_mail.secret')
+        self.s = load_statics('llab_mail.secret')
 
         # setup server connection
         try:

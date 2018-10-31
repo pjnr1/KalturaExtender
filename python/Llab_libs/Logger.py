@@ -3,7 +3,8 @@ from termcolor import colored
 
 
 class SimpleLogger(object):
-    logfile = None
+    logfile = NotImplemented
+
     def __init__(self, logfile=None):
         if logfile is not None:
             self.logfile = open(logfile, 'a')
@@ -34,4 +35,4 @@ class SimpleLogger(object):
         self.log(string, sender, color="red")
 
     def critical(self, string, sender=None):
-        self.log(string, sender, color=None, on_color="on_red")
+        self.log(string, sender, on_color="on_red")
