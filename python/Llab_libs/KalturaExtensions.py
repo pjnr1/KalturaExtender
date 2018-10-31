@@ -111,7 +111,7 @@ class KalturaExtender:
         entryFilter = KalturaMediaEntryFilter()
         self.apply_filter(entryFilter, filters)
 
-        res = getattr(self.client, entryType).list(entryFilter)
+        res = getattr(self.get_client(), entryType).list(entryFilter)
         i = 0
         output = {}
         for entry in res.objects:
@@ -144,7 +144,7 @@ class KalturaExtender:
         f = KalturaUserFilter()
         p = KalturaFilterPager()
         p.pageSize = 500
-        res = self.client.user.list(f, p)
+        res = self.get_client().user.list(f, p)
         i = 0
         output = {}
         for user in res.objects:
@@ -165,7 +165,7 @@ class KalturaExtender:
         mediaFilter.userIdEqual = username
         self.apply_filter(mediaFilter, filters)
 
-        res = self.client.media.list(mediaFilter)
+        res = self.get_client().media.list(mediaFilter)
 
         i = 0
         output = {}
@@ -183,7 +183,7 @@ class KalturaExtender:
         modifierEntry = KalturaMediaEntry()
         modifierEntry.parentEntryId = parent
 
-        return getattr(self.client, entryType).update(child, modifierEntry)
+        return getattr(self.get_client(), entryType).update(child, modifierEntry)
 
     def update_entry(self, id, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
         if updates is not None:
@@ -191,17 +191,16 @@ class KalturaExtender:
                 if hasattr(modifierEntry, u):
                     setattr(modifierEntry, u, updates[u])
 
-        return getattr(self.client, entryType).update(id, modifierEntry)
+        return getattr(self.get_client(), entryType).update(id, modifierEntry)
 
     def delete_entry(self, id, entryType):
-        return getattr(self.client, entryType).delete(id)
+        return getattr(self.get_client(), entryType).delete(id)
 
-    # TODO:
     def get_categories(self, filters=None):
         f = KalturaCategoryFilter()
         self.apply_filter(f, filters)
 
-        res = self.client.category.list(f)
+        res = self.get_client().category.list(f)
 
         i = 0
         output = {}
@@ -305,6 +304,11 @@ class KalturaExtender:
                 self.logger.info(finalInfo)
         if verbose:
             print(finalInfo)
+
+    def get_dual_users(self):
+        userList = self.get_users(printResult=False)
+        for user in userList:
+            print(user)
 
 
 def exportToCsv(list, path, specificVariables=None):
