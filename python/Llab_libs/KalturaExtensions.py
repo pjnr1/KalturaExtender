@@ -404,7 +404,7 @@ class KalturaExtender:
 
         if addedCount is 0:
             if self.logger is not NotImplemented:
-                log_str = "No new dual users added to list"
+                log_str = "No new dual users detected"
                 self.logger.info(log_str)
         else:
             if os.path.isfile(__dual_user_list__):
@@ -423,11 +423,19 @@ class KalturaExtender:
         if os.path.isfile(__dual_user_list__):
             with open(__dual_user_list__, 'r') as f:
                 user_list = json.load(f)
-
+        c = 0
         if user_list is not None:
             for user in user_list:
                 if user['lms_user'] == 'jeslar':
-                    self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
+                    d = self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
+                    c = c + d
+
+        if self.logger is not NotImplemented:
+            if c > 0:
+                log_str = "Updated {0} dual user entries".format(c)
+            else:
+                log_str = "No new dual user entries detected"
+            self.logger.info(log_str)
 
 
 def exportToCsv(list, path, specificVariables=None):
