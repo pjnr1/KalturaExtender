@@ -310,7 +310,10 @@ class KalturaExtender:
 
         updatedCount = len(pairedEntries) - updateErrorCount
         totalCount = len(pairedEntries)
-        finalInfo = 'Updated {0} out of {1} entries'.format(str(updatedCount), str(totalCount))
+        if totalCount == 0:
+            finalInfo = 'No new dualstream recordings detected.'
+        else:
+            finalInfo = 'Updated {0} out of {1} entries'.format(str(updatedCount), str(totalCount))
 
         if self.logger is not NotImplemented:
             if updatedCount != totalCount:
