@@ -418,7 +418,7 @@ class KalturaExtender:
                 json.dump(user_list, f)
 
             if self.logger is not NotImplemented:
-                log_str = "Added {0} new dual users to list".format(addedCount)
+                log_str = "Added {0} new dual users to local list {1} ".format(addedCount, __dual_user_list__)
                 self.logger.info(log_str)
 
         return addedCount
