@@ -1,3 +1,4 @@
 *.secret  # Client secrets
 .idea/    # IDE-folders
 *.log     # log-files
+*.csv     # csv-files
