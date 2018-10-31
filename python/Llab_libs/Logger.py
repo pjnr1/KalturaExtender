@@ -34,7 +34,7 @@ class SimpleLogger(object):
         self.__log(string, sender, color="magneta")
 
     def info(self, string, sender=None):
-        self.__log(string, sender, color="white")
+        self.__log(string, sender)
 
     def warning(self, string, sender=None):
         self.__log(string, sender, color="yellow")

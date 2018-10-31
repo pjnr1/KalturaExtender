@@ -1,6 +1,9 @@
 import csv
 import re
 import os
+import collections
+import json
+from functools import partial
 import traceback
 from datetime import datetime
 
@@ -16,6 +19,8 @@ from Kaltura.KalturaClient.Base import *
 from Kaltura.KalturaClient.Plugins.Core import *
 
 __basepath__ = os.path.dirname(os.path.realpath(__file__))
+__dual_user_list__ = os.path.join(__basepath__, '../dual_user_list.json')
+
 listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
                                 'statusUpdatedAt', 'deletedAt', 'mediaDate',
                                 'firstBroadcast', 'lastBroadcast']
@@ -27,9 +32,14 @@ def _now():
 
 def kalturaObjectValueToString(a, v):
     if v is None or v is NotImplemented:
-        return None
+        return ""
     elif 'Kaltura' in type(v).__name__:
-        return v.getValue().__str__()
+        if type(v).__name__ == 'KalturaLiveStreamConfiguration':
+            return 'KalturaLiveStreamConfiguration'
+        elif type(v).__name__ == 'KalturaLiveStreamBitrate':
+            return 'KalturaLiveStreamBitrate'
+        else:
+            return v.getValue().__str__()
     elif any(x in a for x in listOfUnixTimeStampVariables):
         return datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
     else:
@@ -67,6 +77,7 @@ class KalturaExtender:
 
     client = NotImplemented
     errorMailer = NotImplemented
+    logger = NotImplemented
     ks = NotImplemented
     categoryIds = NotImplemented
 
@@ -185,16 +196,22 @@ class KalturaExtender:
 
         return getattr(self.get_client(), entryType).update(child, modifierEntry)
 
-    def update_entry(self, id, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
+    def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
+        if self.logger is not NotImplemented:
+            log_str = "Updating entry {0}: {1}".format(entryId, updates)
+            self.logger.info(log_str)
         if updates is not None:
             for u in updates:
                 if hasattr(modifierEntry, u):
                     setattr(modifierEntry, u, updates[u])
 
-        return getattr(self.get_client(), entryType).update(id, modifierEntry)
+        return getattr(self.get_client(), entryType).update(entryId, modifierEntry)
 
-    def delete_entry(self, id, entryType):
-        return getattr(self.get_client(), entryType).delete(id)
+    def delete_entry(self, entryId, entryType):
+        if self.logger is not NotImplemented:
+            log_str = "Deleting entry {0}".format(entryId)
+            self.logger.info(log_str)
+        return getattr(self.get_client(), entryType).delete(entryId)
 
     def get_categories(self, filters=None):
         f = KalturaCategoryFilter()
@@ -264,10 +281,11 @@ class KalturaExtender:
         for parent, child in pairedEntries:
             try:
                 client.set_parent(parent=parent[1].id, child=child[1].id)
-                client.update_entry(id=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
-                self.logger.info('{0} Updated:'.format(str(_now())))
-                self.logger.info('\tparent: {0} | {1}'.format(parent[0], parent[1].name))
-                self.logger.info('\tchild: {0} | {1}'.format(child[0], child[1].name))
+                client.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
+                if self.logger is not NotImplemented:
+                    self.logger.info('{0} Updated:'.format(str(_now())))
+                    self.logger.info('\tparent: {0} | {1}'.format(parent[0], parent[1].name))
+                    self.logger.info('\tchild: {0} | {1}'.format(child[0], child[1].name))
             except Exception as e:
                 updateErrorCount += 1
                 tb = traceback.format_exc()
@@ -278,7 +296,7 @@ class KalturaExtender:
 
         if errorList:
             errorHeader = '{0} Encountered following errors:'.format(str(_now()))
-            if self.logger:
+            if self.logger is not NotImplemented:
                 self.logger.critical(errorHeader)
             if verbose:
                 print(errorHeader)
@@ -289,15 +307,15 @@ class KalturaExtender:
                 if verbose:
                     print('-' * 80)
                     print(e)
-            if self.errorMailer:
+            if self.errorMailer is not NotImplemented:
                 self.errorMailer.send_error_mail(__file__, errorList)
 
         updatedCount = len(pairedEntries) - updateErrorCount
         totalCount = len(pairedEntries)
-        finalInfo = '{0} Updated {1} out of {2}entries'.format(str(_now()),
+        finalInfo = '{0} Updated {1} out of {2} entries'.format(str(_now()),
                                                                str(updatedCount), str(totalCount))
 
-        if self.logger:
+        if self.logger is not NotImplemented:
             if updatedCount != totalCount:
                 self.logger.warning(finalInfo)
             else:
@@ -306,9 +324,106 @@ class KalturaExtender:
             print(finalInfo)
 
     def get_dual_users(self):
+        def list_duplicates_of(seq, item):
+            start_at = -1
+            locs = []
+            while True:
+                try:
+                    loc = seq.index(item, start_at + 1)
+                except ValueError:
+                    break
+                else:
+                    locs.append(loc)
+                    start_at = loc
+            return locs
+
         userList = self.get_users(printResult=False)
+        userUsersList = []
+        userIndexList = []
         for user in userList:
-            print(user)
+            userUsersList.append(user)
+            userIndexList.append(user.split('@')[0])
+
+        duplicates = [item for item, count in collections.Counter(userIndexList).items() if count > 1]
+        duplicates_indexes = partial(list_duplicates_of, userIndexList)
+
+        dual_users = []
+        for d_idx in duplicates:
+            indexes = duplicates_indexes(d_idx)
+
+            kms_user = None
+            lms_user = None
+            if len(indexes) == 2:
+                for idx in indexes:
+                    userId = userUsersList[idx]
+                    if '@' in userId:
+                        kms_user = userId
+                    else:
+                        lms_user = userId
+            if kms_user is not None and lms_user is not None:
+                dual_users.append({'kms_user': kms_user, 'lms_user': lms_user})
+
+        return dual_users
+
+    def set_entry_ownership(self, entryId, userId):
+        return self.update_entry(entryId=entryId, updates={'userId': userId})
+
+    def set_entry_coeditors(self, entryId, userIdList):
+        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList})
+
+    def set_dual_user_ownerships(self, kms_userId, lms_userId):
+        c = 0
+        for lms_owned_entryId in self.get_entries_by_user(lms_userId):
+            self.set_entry_ownership(lms_owned_entryId, kms_userId)
+            c = c + 1
+        for kms_owned_entryId in self.get_entries_by_user(kms_userId):
+            self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+            c = c + 1
+        return c
+
+    def update_dual_user_list(self):
+        user_list = None
+        if os.path.isfile(__dual_user_list__):
+            with open(__dual_user_list__, 'r') as f:
+                user_list = json.load(f)
+
+        dual_users = self.get_dual_users()
+
+        c = 0
+        if user_list is not None:
+            c = c + len(user_list)
+            poplist = []
+            for i, dual_user in enumerate(dual_users):
+                if dual_user in user_list:
+                    poplist.append(i)
+            for i in reversed(poplist):
+                dual_users.pop(i)
+            user_list = user_list + dual_users
+        else:
+            user_list = dual_users
+
+        if os.path.isfile(__dual_user_list__):
+            os.remove(__dual_user_list__)
+        with open(__dual_user_list__, 'w') as f:
+            json.dump(user_list, f)
+
+        addedCount = len(user_list) - c
+
+        if self.logger is not NotImplemented:
+            log_str = "Added {0} new dual users to list".format(addedCount)
+            self.logger.info(log_str)
+        return addedCount
+
+    def update_dual_user_ownerships(self):
+        user_list = None
+        if os.path.isfile(__dual_user_list__):
+            with open(__dual_user_list__, 'r') as f:
+                user_list = json.load(f)
+
+        if user_list is not None:
+            for user in user_list:
+                if user['lms_user'] == 'jeslar':
+                    self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
 
 
 def exportToCsv(list, path, specificVariables=None):
