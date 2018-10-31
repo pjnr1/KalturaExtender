@@ -369,7 +369,7 @@ class KalturaExtender:
         return self.update_entry(entryId=entryId, updates={'userId': userId})
 
     def set_entry_coeditors(self, entryId, userIdList):
-        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList})
+        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList, 'entitledUsersPublish': userIdList})
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
