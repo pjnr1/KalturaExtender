@@ -18,17 +18,23 @@ listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
                                 'firstBroadcast', 'lastBroadcast']
 
 
+def kalturaObjectValueToString(a, v):
+    if v is None or v is NotImplemented:
+        return None
+    elif 'Kaltura' in type(v).__name__:
+        return v.getValue().__str__()
+    elif any(x in a for x in listOfUnixTimeStampVariables):
+        return datetime.fromtimestamp(v).strftime("%Y-%m-%d %H:%M:%S")
+    else:
+        return v.__str__()
+
+
+
 def printKalturaObject(object, specificVariables=None, counter=None, levelOfIndent=0):
     indent = '\t' * levelOfIndent
 
     def printOut(a, values):
-        if 'Kaltura' in type(values).__name__:
-            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.getValue().__str__()))
-        elif any(x in a for x in listOfUnixTimeStampVariables):
-            dt = datetime.fromtimestamp(values).strftime("%Y-%m-%d %H:%M:%S")
-            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, dt))
-        else:
-            print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, values.__str__()))
+        print('{:s}{:s}:\n{:s}\t{:s}'.format(indent, a, indent, kalturaObjectValueToString(a, values)))
 
     if counter is not None:
         print('{:d}\t{}'.format(counter, object.id))
@@ -278,6 +284,7 @@ class KalturaExtender:
 
         return pairedEntries
 
+
     def merge_dualstreams(self, verbose=True, mailerror=False):
         if verbose:
             print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
@@ -301,7 +308,7 @@ class KalturaExtender:
             except Exception as e:
                 updateErrorCount += 1
                 tb = traceback.format_exc()
-                errEnd = '-'*50 + '\n\n'
+                errEnd = '-' * 50 + '\n\n'
                 errorList.append(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')) + " " + str(e) + '\n\n' + errEnd)
                 errorList.append(tb)
 
@@ -325,25 +332,31 @@ class KalturaExtender:
 
 
 def exportToCsv(list, path, specificVariables=None):
-    if specificVariables is None:
-        return None
+    if len(list) is 0:
+        return
 
-    def getStr(value):
-        if 'Kaltura' in type(value).__name__:
-            return value.getValue().__str__()
-        else:
-            return value.__str__()
+    if specificVariables is None:
+        specificVariables = vars(list.values().__iter__().__next__()).keys()
 
     with open(path, 'w', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=specificVariables)
         writer.writeheader()
-        for x, object in list.items():
+        for x, o in sorted(list.items()):
             row = {}
-            for p in vars(object).items():
-                if p[0] in specificVariables:
-                    row[p[0]] = getStr(p[1])
+            for p in vars(o).items():
+                if p[0] not in specificVariables:
+                    row[p[0]] = None
+                    continue
+
+                if p[1]:
+                    row[p[0]] = kalturaObjectValueToString(p[0], p[1])
+                else:
+                    row[p[0]] = None
 
             writer.writerow(row)
+
+
+
 
 
 
