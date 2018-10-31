@@ -373,11 +373,12 @@ class KalturaExtender:
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
-        for lms_owned_entryId in self.get_entries_by_user(lms_userId):
+        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId):
             self.set_entry_ownership(lms_owned_entryId, kms_userId)
             c = c + 1
-        for kms_owned_entryId in self.get_entries_by_user(kms_userId):
-            self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+        for kms_owned_entryId,entry in self.get_entries_by_user(kms_userId).items():
+            if lms_userId not in entry.entitledUsersEdit:
+                self.set_entry_coeditors(kms_owned_entryId, entry.entitledUsersEdit + ',' + lms_userId)
             c = c + 1
         return c
 
@@ -402,16 +403,22 @@ class KalturaExtender:
         else:
             user_list = dual_users
 
-        if os.path.isfile(__dual_user_list__):
-            os.remove(__dual_user_list__)
-        with open(__dual_user_list__, 'w') as f:
-            json.dump(user_list, f)
-
         addedCount = len(user_list) - c
 
-        if self.logger is not NotImplemented:
-            log_str = "Added {0} new dual users to list".format(addedCount)
-            self.logger.info(log_str)
+        if addedCount is 0:
+            if self.logger is not NotImplemented:
+                log_str = "No new dual users added to list".format(addedCount)
+                self.logger.info(log_str)
+        else:
+            if os.path.isfile(__dual_user_list__):
+                os.remove(__dual_user_list__)
+            with open(__dual_user_list__, 'w') as f:
+                json.dump(user_list, f)
+
+            if self.logger is not NotImplemented:
+                log_str = "Added {0} new dual users to list".format(addedCount)
+                self.logger.info(log_str)
+
         return addedCount
 
     def update_dual_user_ownerships(self):
