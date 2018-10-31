@@ -96,11 +96,11 @@ class KalturaExtender:
         return s
 
     @staticmethod
-    def apply_filter(mediaFilter, filters):
+    def apply_filter(filter, filters):
         if filters is not None:
             for f in filters:
-                if hasattr(mediaFilter, f):
-                    setattr(mediaFilter, f, filters[f])
+                if hasattr(filter, f):
+                    setattr(filter, f, filters[f])
                 else:
                     print('Warning:', filters[f], 'is not a valid KalturaMediaEntryFilter() attribute')
 
@@ -112,6 +112,7 @@ class KalturaExtender:
 
     def generateThumbAndSetAsDefault(self, id, paramId=None):
         return NotImplementedError
+        #
         if not paramId:
             pIds = load_statics_old("kaltura_thumbParamsIds")
             paramId = pIds['default']
@@ -220,22 +221,38 @@ class KalturaExtender:
     def delete_entry(self, id, entryType):
         return getattr(self.client, entryType).delete(id)
 
-    def getDualStreamChannels(self):
+    # TODO:
+    def get_categories(self, filters=None):
+        f = KalturaCategoryFilter()
+        self.apply_filter(f, filters)
+
+        res = self.client.category.list(f,)
+
+        i = 0
+        output = {}
+        for media in res.objects:
+            output[media.id] = media
+
+            i += 1
+
+        return output
+
+    def get_dualstream_channels(self):
         cats = load_statics_old(os.path.join(__basepath__, 'kaltura_categoryIds'))
 
         return self.get_entries(filters={'categoriesIdsMatchAnd': self.categoryIds['Streams'],
-                                        'mediaTypeEqual': 201},
+                                         'mediaTypeEqual': 201},
                                 entryType='liveStream')
 
     def get_dualstream_pairs(self):
-        streamEntries = self.getDualStreamChannels()
+        streamEntries = self.get_dualstream_channels()
 
         readyEntries = {}
         for streams in streamEntries.items():
             listOfEntries = self.get_entries(filters={'rootEntryIdEqual': streams[0],
-                                                     'categoriesIdsNotContains': self.categoryIds['Recordings'],
-                                                     'mediaTypeEqual': 1,
-                                                     'statusEqual': KalturaEntryStatus.READY})
+                                                      'categoriesIdsNotContains': self.categoryIds['Recordings'],
+                                                      'mediaTypeEqual': 1,
+                                                      'statusEqual': KalturaEntryStatus.READY})
 
             for entry in listOfEntries.items():
                 readyEntries[entry[0]] = entry[1]

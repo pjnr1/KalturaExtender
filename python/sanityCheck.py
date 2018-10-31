@@ -18,7 +18,7 @@ if __name__ == '__main__':
     
     if 'dualstream' in sys.argv:
         print(now(), 'Get dualstream channels')
-        res1 = client.getDualStreamChannels()
+        res1 = client.get_dualstream_channels()
         for x1, y1 in res1.items():
             printKalturaObject(y1, specificVariables=['id', 'name'])
             res2 = client.get_entries(filters={'rootEntryIdEqual': x1,
