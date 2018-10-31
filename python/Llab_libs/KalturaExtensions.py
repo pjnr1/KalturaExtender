@@ -67,7 +67,7 @@ class KalturaExtender:
     categoryIds = NotImplemented
 
     def __init__(self, log=False, errormail=False):
-        s = load_statics('kaltura_statics.secret')
+        s = load_statics('kaltura.secret')
         self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
         cfg = KalturaConfiguration(s.partnerId)
