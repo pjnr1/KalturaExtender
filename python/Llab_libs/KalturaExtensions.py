@@ -21,6 +21,10 @@ listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
                                 'firstBroadcast', 'lastBroadcast']
 
 
+def _now():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+
 def kalturaObjectValueToString(a, v):
     if v is None or v is NotImplemented:
         return None
@@ -81,7 +85,7 @@ class KalturaExtender:
             self.errorMailer = LLabMailHelper()
 
         if log:
-            self.logger = SimpleLogger(logfile='kaltura.log')
+            self.logger = SimpleLogger(logfile='../kaltura.log')
 
     @staticmethod
     def apply_filter(filter, filters):
@@ -197,7 +201,7 @@ class KalturaExtender:
         f = KalturaCategoryFilter()
         self.apply_filter(f, filters)
 
-        res = self.client.category.list(f,)
+        res = self.client.category.list(f, )
 
         i = 0
         output = {}
@@ -247,9 +251,9 @@ class KalturaExtender:
 
         return pairedEntries
 
-    def merge_dualstreams(self, verbose=True, mailerror=False):
+    def merge_dualstreams(self, verbose=True):
         if verbose:
-            print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+            print(str(_now()),
                   'Searching for DualStream entries')
 
         client = KalturaExtender()
@@ -262,34 +266,45 @@ class KalturaExtender:
             try:
                 client.set_parent(parent=parent[1].id, child=child[1].id)
                 client.update_entry(id=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
-                print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                      'Updated:', end=' ')
-                print('| p:', parent[0], parent[1].name, end=' ')
-                print('| c:', child[0], child[1].name)
+                self.logger.info('{0} Updated:'.format(str(_now())))
+                self.logger.info('\tparent: {0} | {1}'.format(parent[0], parent[1].name))
+                self.logger.info('\tchild: {0} | {1}'.format(child[0], child[1].name))
             except Exception as e:
                 updateErrorCount += 1
                 tb = traceback.format_exc()
-                errEnd = '-' * 50 + '\n\n'
-                errorList.append(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')) + " " + str(e) + '\n\n' + errEnd)
+                errEnd = '\n\n' + ('-' * 50) + '\n\n'
+                errorList.append('{0} {1} {2}'.format(str(_now()),
+                                                      str(e), errEnd))
                 errorList.append(tb)
 
         if errorList:
-            print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                  'Encountered following errors')
+            errorHeader = '{0} Encountered following errors:'.format(str(_now()))
+            if self.logger:
+                self.logger.critical(errorHeader)
+            if verbose:
+                print(errorHeader)
 
             for e in errorList:
-                print('-----')
-                print(e)
-            if mailerror:
+                if self.logger:
+                    self.logger.error(e)
+                if verbose:
+                    print('-' * 80)
+                    print(e)
+            if self.errorMailer:
                 self.errorMailer.send_error_mail(__file__, errorList)
 
+        updatedCount = len(pairedEntries) - updateErrorCount
+        totalCount = len(pairedEntries)
+        finalInfo = '{0} Updated {1} out of {2}entries'.format(str(_now()),
+                                                               str(updatedCount), str(totalCount))
+
+        if self.logger:
+            if updatedCount != totalCount:
+                self.logger.warning(finalInfo)
+            else:
+                self.logger.info(finalInfo)
         if verbose:
-            print(str(datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                  'Updated',
-                  len(pairedEntries) - updateErrorCount,
-                  'out of',
-                  len(pairedEntries),
-                  'entries')
+            print(finalInfo)
 
 
 def exportToCsv(list, path, specificVariables=None):
@@ -315,6 +330,3 @@ def exportToCsv(list, path, specificVariables=None):
                     row[p[0]] = None
 
             writer.writerow(row)
-
-
-
