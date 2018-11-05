@@ -78,10 +78,11 @@ class KalturaExtender:
     client = NotImplemented
     errorMailer = NotImplemented
     logger = NotImplemented
+    log_level = 0
     ks = NotImplemented
     categoryIds = NotImplemented
 
-    def __init__(self, log=False, errormail=False):
+    def __init__(self, log=False, log_level=0, errormail=False):
         s = load_statics('kaltura.secret')
         self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
@@ -97,6 +98,9 @@ class KalturaExtender:
 
         if log:
             self.logger = SimpleLogger(logfile='../kaltura.log')
+
+        if log_level is not 0:
+            self.log_level = log_level
 
     @staticmethod
     def apply_filter(filter, filters):
@@ -119,7 +123,15 @@ class KalturaExtender:
         return self.client
 
     def get_entries(self, filters=None, entryType='media', printResult=False, specificVariables=None):
-        entryFilter = KalturaMediaEntryFilter()
+        if entryType == 'media':
+            entryFilter = KalturaMediaEntryFilter()
+        elif entryType == 'category':
+            entryFilter = KalturaCategoryFilter()
+        elif entryType == 'liveStream':
+            entryFilter = KalturaLiveStreamEntryFilter()
+        else:
+            entryFilter = KalturaBaseEntryBaseFilter()
+
         self.apply_filter(entryFilter, filters)
 
         res = getattr(self.get_client(), entryType).list(entryFilter)
@@ -169,11 +181,18 @@ class KalturaExtender:
 
             i += 1
 
+        if onlyAdmins:
+            log_str = "Found {0} admin users".format(i)
+        else:
+            log_str = "Found {0} users".format(i)
+        if self.logger is not NotImplemented:
+            self.logger.info(log_str)
+
         return output
 
-    def get_entries_by_user(self, username, filters=None, printResult=False, specificVariables=None):
+    def get_entries_by_user(self, userId, filters=None, printResult=False, specificVariables=None):
         mediaFilter = KalturaMediaEntryFilter()
-        mediaFilter.userIdEqual = username
+        mediaFilter.userIdEqual = userId
         self.apply_filter(mediaFilter, filters)
 
         res = self.get_client().media.list(mediaFilter)
@@ -188,18 +207,22 @@ class KalturaExtender:
 
             i += 1
 
+        if filters is not None:
+            log_str = "Found {0} entries by {1} with filters: {2}".format(i, userId, filters)
+        else:
+            log_str = "Found {0} entries by {1}".format(i, userId)
+        if self.logger is not NotImplemented:
+            self.logger.info(log_str)
+
         return output
 
-    def set_parent(self, parent, child, entryType='media'):
-        modifierEntry = KalturaMediaEntry()
-        modifierEntry.parentEntryId = parent
-
-        return getattr(self.get_client(), entryType).update(child, modifierEntry)
+    def set_parent(self, parentId, childId):
+        return self.update_entry(childId, {'parentEntryId': parentId})
 
     def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
-        if self.logger is not NotImplemented:
+        if self.logger is not NotImplemented and self.log_level < 1:
             log_str = "Updating entry {0}: {1}".format(entryId, updates)
-            self.logger.info(log_str)
+            self.logger.warning(log_str)
         if updates is not None:
             for u in updates:
                 if hasattr(modifierEntry, u):
@@ -208,9 +231,9 @@ class KalturaExtender:
         return getattr(self.get_client(), entryType).update(entryId, modifierEntry)
 
     def delete_entry(self, entryId, entryType):
-        if self.logger is not NotImplemented:
+        if self.logger is not NotImplemented and self.log_level < 1:
             log_str = "Deleting entry {0}".format(entryId)
-            self.logger.info(log_str)
+            self.logger.warning(log_str)
         return getattr(self.get_client(), entryType).delete(entryId)
 
     def get_categories(self, filters=None):
@@ -280,10 +303,11 @@ class KalturaExtender:
         errorList = []
         for parent, child in pairedEntries:
             try:
-                client.set_parent(parent=parent[1].id, child=child[1].id)
+                client.set_parent(parentId=parent[1].id, childId=child[1].id)
                 client.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
                 if self.logger is not NotImplemented:
-                    self.logger.info('Updated (parent: {0}) and (child: {0})'.format(parent[0], child[0]))
+                    self.logger.log('Updated (parent: {0}) and (child: {0})'.format(parent[0], child[0]),
+                                    color="yellow")
             except Exception as e:
                 updateErrorCount += 1
                 tb = traceback.format_exc()
