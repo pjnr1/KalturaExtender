@@ -82,7 +82,7 @@ class KalturaExtender:
     ks = NotImplemented
     categoryIds = NotImplemented
 
-    def __init__(self, log=False, log_level=0, errormail=False):
+    def __init__(self, log=True, log_level=0, errormail=False):
         s = load_statics('kaltura.secret')
         self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
@@ -99,8 +99,7 @@ class KalturaExtender:
         if log:
             self.logger = SimpleLogger(logfile='../kaltura.log')
 
-        if log_level is not 0:
-            self.log_level = log_level
+        self.log_level = log_level
 
     @staticmethod
     def apply_filter(filter, filters):
@@ -122,103 +121,6 @@ class KalturaExtender:
             raise RuntimeError('KalturaExtender::client not loaded!')
         return self.client
 
-    def get_entries(self, filters=None, entryType='media', printResult=False, specificVariables=None):
-        if entryType == 'media':
-            entryFilter = KalturaMediaEntryFilter()
-        elif entryType == 'category':
-            entryFilter = KalturaCategoryFilter()
-        elif entryType == 'liveStream':
-            entryFilter = KalturaLiveStreamEntryFilter()
-        else:
-            entryFilter = KalturaBaseEntryBaseFilter()
-
-        self.apply_filter(entryFilter, filters)
-
-        res = getattr(self.get_client(), entryType).list(entryFilter)
-        i = 0
-        output = {}
-        for entry in res.objects:
-            output[entry.id] = entry
-
-            if printResult:
-                printKalturaObject(entry, specificVariables=specificVariables, counter=i)
-
-            i += 1
-
-        return output
-
-    def get_live_entries(self, printResult=True, specificVariables=None):
-        f = KalturaLiveEntryFilter()
-        res = self.get_client().liveStream.list(f)
-
-        i = 0
-        output = {}
-        for stream in res.objects:
-            output[stream.id] = stream
-
-            if printResult:
-                printKalturaObject(stream, counter=i, specificVariables=specificVariables)
-
-            i += 1
-
-        return output
-
-    def get_users(self, printResult=True, onlyAdmins=False, specificVariables=None):
-        f = KalturaUserFilter()
-        p = KalturaFilterPager()
-        p.pageSize = 500
-        res = self.get_client().user.list(f, p)
-        i = 0
-        output = {}
-        for user in res.objects:
-            if onlyAdmins and not user.isAdmin:
-                continue
-
-            output[user.id] = user
-
-            if printResult:
-                printKalturaObject(user, specificVariables=specificVariables, counter=i)
-
-            i += 1
-
-        if onlyAdmins:
-            log_str = "Found {0} admin users".format(i)
-        else:
-            log_str = "Found {0} users".format(i)
-        if self.logger is not NotImplemented:
-            self.logger.info(log_str)
-
-        return output
-
-    def get_entries_by_user(self, userId, filters=None, printResult=False, specificVariables=None):
-        mediaFilter = KalturaMediaEntryFilter()
-        mediaFilter.userIdEqual = userId
-        self.apply_filter(mediaFilter, filters)
-
-        res = self.get_client().media.list(mediaFilter)
-
-        i = 0
-        output = {}
-        for media in res.objects:
-            output[media.id] = media
-
-            if printResult:
-                printKalturaObject(media, specificVariables=specificVariables, counter=i)
-
-            i += 1
-
-        if filters is not None:
-            log_str = "Found {0} entries by {1} with filters: {2}".format(i, userId, filters)
-        else:
-            log_str = "Found {0} entries by {1}".format(i, userId)
-        if self.logger is not NotImplemented:
-            self.logger.info(log_str)
-
-        return output
-
-    def set_parent(self, parentId, childId):
-        return self.update_entry(childId, {'parentEntryId': parentId})
-
     def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
         if self.logger is not NotImplemented and self.log_level < 1:
             log_str = "Updating entry {0}: {1}".format(entryId, updates)
@@ -231,25 +133,98 @@ class KalturaExtender:
         return getattr(self.get_client(), entryType).update(entryId, modifierEntry)
 
     def delete_entry(self, entryId, entryType):
-        if self.logger is not NotImplemented and self.log_level < 1:
+        if self.logger is not NotImplemented:
             log_str = "Deleting entry {0}".format(entryId)
             self.logger.warning(log_str)
         return getattr(self.get_client(), entryType).delete(entryId)
 
-    def get_categories(self, filters=None):
-        f = KalturaCategoryFilter()
-        self.apply_filter(f, filters)
+    def get_entries(self, filters=None, entryType='media', printResult=False, specificVariables=None, pager=None):
+        if entryType == 'media':
+            entryFilter = KalturaMediaEntryFilter()
+        elif entryType == 'category':
+            entryFilter = KalturaCategoryFilter()
+        elif entryType == 'liveStream':
+            entryFilter = KalturaLiveStreamEntryFilter()
+        elif entryType == 'user':
+            assert pager is not None
+            entryFilter = KalturaUserFilter()
+        else:
+            entryFilter = KalturaBaseEntryBaseFilter()
 
-        res = self.get_client().category.list(f)
+        self.apply_filter(entryFilter, filters)
+
+        if pager is None:
+            pager = NotImplemented
+
+        res = getattr(self.get_client(), entryType).list(entryFilter, pager)
 
         i = 0
         output = {}
-        for cats in res.objects:
-            output[cats.id] = cats
+        for entry in res.objects:
+            output[entry.id] = entry
+
+            if printResult:
+                printKalturaObject(entry, specificVariables=specificVariables, counter=i)
 
             i += 1
 
+        if filters is not None:
+            log_str = "Found {0} {1}-entries with: {2}".format(i, entryType, filters)
+        else:
+            log_str = "Found {0} {1}-entries".format(i, entryType)
+        if self.logger is not NotImplemented and self.log_level < 1:
+            self.logger.info(log_str)
+
         return output
+
+    def get_users(self, printResult=True, onlyAdmins=False, specificVariables=None):
+        p = KalturaFilterPager()
+        p.pageSize = 500
+
+        res = self.get_entries(entryType='user', pager=p)
+
+        i = 0
+        output = {}
+        for userId, user in res.items():
+            if onlyAdmins and not user.isAdmin:
+                continue
+
+            output[userId] = user
+
+            if printResult:
+                printKalturaObject(user, specificVariables=specificVariables, counter=i)
+
+            i += 1
+
+        if onlyAdmins:
+            log_str = "Found {0} admin users".format(i)
+        else:
+            log_str = "Found {0} users".format(i)
+        if self.logger is not NotImplemented and self.log_level < 2:
+            self.logger.info(log_str)
+
+        return output
+
+    def get_entries_by_user(self, userId, filters=None):
+        if filters is not None:
+            filters['userIdEqual'] = userId
+        else:
+            filters = {'userIdEqual': userId}
+
+        res = self.get_entries(entryType='media', filters=filters)
+
+        if self.logger is not NotImplemented and self.log_level < 2:
+            log_str = "Found {0} entries by {1}".format(len(res), userId)
+            self.logger.info(log_str)
+
+        return res
+
+    def set_parent(self, parentId, childId):
+        return self.update_entry(childId, {'parentEntryId': parentId})
+
+
+    def get_categories(self, filters=None):
+        return self.get_entries(filters=filters, entryType='category')
 
     def get_dualstream_channels(self):
         return self.get_entries(filters={'categoriesIdsMatchAnd': self.categoryIds.Streams,
@@ -432,18 +407,21 @@ class KalturaExtender:
         addedCount = len(user_list) - c
 
         if addedCount is 0:
-            if self.logger is not NotImplemented:
-                log_str = "No new dual users detected"
-                self.logger.info(log_str)
+            log_str = "No new dual users detected"
         else:
-            if os.path.isfile(__dual_user_list__):
-                os.remove(__dual_user_list__)
-            with open(__dual_user_list__, 'w') as f:
-                json.dump(user_list, f)
+            log_str = "Found {0} new dual users to local list {1} ".format(addedCount, __dual_user_list__)
+            try:
+                if os.path.isfile(__dual_user_list__):
+                    os.remove(__dual_user_list__)
+                with open(__dual_user_list__, 'w') as f:
+                    json.dump(user_list, f)
+            except Exception as e:
+                self.logger.error("Error removing and rewriting user-list: {0}".format(__dual_user_list__))
+                if self.errorMailer is not NotImplemented:
+                    self.errorMailer.send_error_mail(msg=e)
 
-            if self.logger is not NotImplemented:
-                log_str = "Added {0} new dual users to local list {1} ".format(addedCount, __dual_user_list__)
-                self.logger.info(log_str)
+        if self.logger is not NotImplemented and self.log_level < 3:
+            self.logger.info(log_str)
 
         return addedCount
 
@@ -459,7 +437,7 @@ class KalturaExtender:
                     d = self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
                     c = c + d
 
-        if self.logger is not NotImplemented:
+        if self.logger is not NotImplemented and self.log_level < 3:
             if c > 0:
                 log_str = "Updated {0} dual user entries".format(c)
             else:
