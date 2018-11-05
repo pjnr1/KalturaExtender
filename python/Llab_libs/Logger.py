@@ -43,4 +43,4 @@ class SimpleLogger(object):
         self._log(string, sender, color="red", date_color="red")
 
     def critical(self, string, sender=None):
-        self._log(string, sender, on_color="on_red", date_color="red")
+        self._log(string, sender, on_color="on_red", date_color="white")
