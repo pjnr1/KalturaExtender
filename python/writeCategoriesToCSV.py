@@ -24,7 +24,7 @@ if __name__ == '__main__':
 
     print(now(), 'Write categories to csv')
     v = vars(l[random.choice(list(l.keys()))])
-    exportToCsv(l, path, specificVariables=v)
+    export_to_csv(l, path, specificVariables=v)
     print()
 
     print(now(), 'done')

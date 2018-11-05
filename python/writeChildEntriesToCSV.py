@@ -38,6 +38,6 @@ if __name__ == '__main__':
 
     print(now(), 'Write csv', end='\n\n')
     csvFilePath = '../csv_files/dualstream-recordings.csv'
-    exportToCsv(outdict, csvFilePath)
+    export_to_csv(outdict, csvFilePath)
 
     print(now(), 'Done writing', end='\n\n')

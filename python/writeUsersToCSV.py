@@ -23,7 +23,7 @@ if __name__ == '__main__':
     print(now(), 'Write existing users to csv')
     v = vars(userList['admin'])
     path = '../csv_files/users.csv'
-    exportToCsv(userList, path, specificVariables=v)
+    export_to_csv(userList, path, specificVariables=v)
     print()
 
     print(now(), 'done')

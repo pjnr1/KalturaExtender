@@ -72,6 +72,31 @@ def printKalturaObject(object, specificVariables=None, counter=None, levelOfInde
     print('')
 
 
+def export_to_csv(list_to_export, path, specificVariables=None):
+    if len(list_to_export) is 0:
+        return
+
+    if specificVariables is None:
+        specificVariables = vars(list_to_export.values().__iter__().__next__()).keys()
+
+    with open(path, 'w', newline='') as csvfile:
+        writer = csv.DictWriter(csvfile, fieldnames=specificVariables)
+        writer.writeheader()
+        for x, o in sorted(list_to_export.items()):
+            row = {}
+            for p in vars(o).items():
+                if p[0] not in specificVariables:
+                    row[p[0]] = None
+                    continue
+
+                if p[1]:
+                    row[p[0]] = kalturaObjectValueToString(p[0], p[1])
+                else:
+                    row[p[0]] = None
+
+            writer.writerow(row)
+
+
 class KalturaExtender:
     TIMESTAMP_RANGE = 30
 
@@ -221,7 +246,6 @@ class KalturaExtender:
 
     def set_parent(self, parentId, childId):
         return self.update_entry(childId, {'parentEntryId': parentId})
-
 
     def get_categories(self, filters=None):
         return self.get_entries(filters=filters, entryType='category')
@@ -443,28 +467,3 @@ class KalturaExtender:
             else:
                 log_str = "No new dual user entries detected"
             self.logger.info(log_str)
-
-
-def exportToCsv(list, path, specificVariables=None):
-    if len(list) is 0:
-        return
-
-    if specificVariables is None:
-        specificVariables = vars(list.values().__iter__().__next__()).keys()
-
-    with open(path, 'w', newline='') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=specificVariables)
-        writer.writeheader()
-        for x, o in sorted(list.items()):
-            row = {}
-            for p in vars(o).items():
-                if p[0] not in specificVariables:
-                    row[p[0]] = None
-                    continue
-
-                if p[1]:
-                    row[p[0]] = kalturaObjectValueToString(p[0], p[1])
-                else:
-                    row[p[0]] = None
-
-            writer.writerow(row)
