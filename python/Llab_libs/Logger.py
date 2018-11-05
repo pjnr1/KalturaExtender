@@ -12,35 +12,35 @@ class SimpleLogger(object):
         self.pendingLog = []
 
     # Emulated private function
-    def __log(self, string, sender=None, color="white", on_color=None, p=False):
+    def _log(self, string, sender=None, date_color="cyan", color="white", on_color=None, p=False):
         now = datetime.now()
         date = str(now)[:19]
         message = str(string)
         if sender is None:
             sender = sys._getframe().f_back.f_back.f_code.co_name
-        log_string = "[{d}][ {s} ] {m}".format(d=colored(date, 'cyan'),
-                                               m=colored(message, color, on_color),
-                                               s=sender)
+        log_string = "[{d}][{s}] {m}".format(d=colored(date, date_color),
+                                             m=colored(message, color, on_color),
+                                             s=sender)
         if p:
             print(log_string)
-        if self.logfile:
+        if self.logfile is not NotImplemented:
             self.logfile.write(log_string + "\n")
             self.logfile.flush()
 
     def log(self, string, sender=None, color="white", on_color=None, p=False):
-        self.__log(string, sender, color, on_color, p)
+        self._log(string, sender, color, on_color, p)
 
     def debug(self, string, sender=None):
-        self.__log(string, sender, color="magneta")
+        self._log(string, sender, color="magneta")
 
     def info(self, string, sender=None):
-        self.__log(string, sender)
+        self._log(string, sender)
 
     def warning(self, string, sender=None):
-        self.__log(string, sender, color="yellow")
+        self._log(string, sender, color="yellow")
 
     def error(self, string, sender=None):
-        self.__log(string, sender, color="red")
+        self._log(string, sender, color="red", date_color="red")
 
     def critical(self, string, sender=None):
-        self.__log(string, sender, on_color="on_red")
+        self._log(string, sender, on_color="on_red", date_color="red")
