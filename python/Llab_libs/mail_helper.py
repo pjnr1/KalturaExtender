@@ -19,8 +19,10 @@ class LLabMailHelper:
             print("Couldn't setup connection to server")
             print(e)
 
-    def send_error_mail(self, sender, msg):
-        m = sender.__str__() + '\n'
+    def send_error_mail(self, msg, sender=None):
+        m = ""
+        if sender is not None:
+            m += sender.__str__() + '\n'
         m += msg
         if self.server:
             try:
