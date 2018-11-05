@@ -4,7 +4,7 @@ import sys
 
 
 class SimpleLogger(object):
-    logfile = NotImplemented
+    logfile = None
 
     def __init__(self, logfile=None):
         if logfile is not None:
@@ -23,7 +23,7 @@ class SimpleLogger(object):
                                              s=sender)
         if p:
             print(log_string)
-        if self.logfile is not NotImplemented:
+        if self.logfile is not None:
             self.logfile.write(log_string + "\n")
             self.logfile.flush()
 
