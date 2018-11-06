@@ -147,15 +147,21 @@ class KalturaExtender:
         return self.client
 
     def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
-        if self.logger is not NotImplemented and self.log_level < 1:
-            log_str = "Updating entry {0}: {1}".format(entryId, updates)
-            self.logger.warning(log_str)
         if updates is not None:
             for u in updates:
                 if hasattr(modifierEntry, u):
                     setattr(modifierEntry, u, updates[u])
+        try:
+            res = getattr(self.get_client(), entryType).update(entryId, modifierEntry)
+            if self.logger is not NotImplemented and self.log_level < 1:
+                log_str = "Updating entry {0}: {1}".format(entryId, updates)
+                self.logger.warning(log_str)
+        except Exception as e:
+            if self.logger is not NotImplemented:
+                self.logger.error(e)
+            raise e
 
-        return getattr(self.get_client(), entryType).update(entryId, modifierEntry)
+        return res
 
     def delete_entry(self, entryId, entryType):
         if self.logger is not NotImplemented:
