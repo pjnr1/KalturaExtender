@@ -185,7 +185,7 @@ class KalturaExtender:
         self.apply_filter(entryFilter, filters)
 
         if pager is None:
-            pager = NotImplemented
+            pager = KalturaFilterPager(pageSize=500)
 
         res = getattr(self.get_client(), entryType).list(entryFilter, pager)
 
@@ -404,10 +404,11 @@ class KalturaExtender:
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
-        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId).items():
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP}
+        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId, filters=f).items():
             self.set_entry_ownership(lms_owned_entryId, kms_userId)
             c = c + 1
-        for kms_owned_entryId,entry in self.get_entries_by_user(kms_userId).items():
+        for kms_owned_entryId, entry in self.get_entries_by_user(kms_userId, filters=f).items():
             if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
                 self.set_entry_coeditors(kms_owned_entryId, lms_userId)
                 c = c + 1
