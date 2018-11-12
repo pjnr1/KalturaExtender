@@ -153,7 +153,7 @@ class KalturaExtender:
                     setattr(modifierEntry, u, updates[u])
         try:
             res = getattr(self.get_client(), entryType).update(entryId, modifierEntry)
-            if self.logger is not NotImplemented and self.log_level < 1:
+            if self.logger is not NotImplemented and self.log_level < 2:
                 log_str = "Updating entry {0}: {1}".format(entryId, updates)
                 self.logger.warning(log_str)
         except Exception as e:
@@ -395,7 +395,10 @@ class KalturaExtender:
         return dual_users
 
     def set_entry_ownership(self, entryId, userId):
-        return self.update_entry(entryId=entryId, updates={'userId': userId})
+        try:
+            return self.update_entry(entryId=entryId, updates={'userId': userId})
+        except Exception as e:
+            return e
 
     def set_entry_coeditors(self, entryId, userIdList):
         # Insert method to test
