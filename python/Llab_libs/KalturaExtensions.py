@@ -404,7 +404,7 @@ class KalturaExtender:
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
-        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId):
+        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId).items():
             self.set_entry_ownership(lms_owned_entryId, kms_userId)
             c = c + 1
         for kms_owned_entryId,entry in self.get_entries_by_user(kms_userId).items():
