@@ -463,9 +463,8 @@ class KalturaExtender:
         c = 0
         if user_list is not None:
             for user in user_list:
-                if user['lms_user'] == 'jeslar':
-                    d = self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
-                    c = c + d
+                d = self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
+                c = c + d
 
         if self.logger is not NotImplemented and self.log_level < 3:
             if c > 0:
