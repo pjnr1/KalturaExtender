@@ -159,7 +159,7 @@ class KalturaExtender:
         except Exception as e:
             if self.logger is not NotImplemented:
                 self.logger.error(e)
-            raise e
+            return e
 
         return res
 
@@ -398,6 +398,7 @@ class KalturaExtender:
         try:
             return self.update_entry(entryId=entryId, updates={'userId': userId})
         except Exception as e:
+            print(e)
             return None
 
     def set_entry_coeditors(self, entryId, userIdList):
