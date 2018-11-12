@@ -398,7 +398,7 @@ class KalturaExtender:
         try:
             return self.update_entry(entryId=entryId, updates={'userId': userId})
         except Exception as e:
-            return e
+            return None
 
     def set_entry_coeditors(self, entryId, userIdList):
         # Insert method to test
