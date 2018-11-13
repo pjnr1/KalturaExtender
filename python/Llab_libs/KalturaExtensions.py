@@ -398,8 +398,7 @@ class KalturaExtender:
         try:
             return self.update_entry(entryId=entryId, updates={'userId': userId})
         except Exception as e:
-            print(e)
-            return None
+            return e
 
     def set_entry_coeditors(self, entryId, userIdList):
         # Insert method to test
@@ -410,12 +409,21 @@ class KalturaExtender:
         c = 0
         f = {'typeEqual': KalturaEntryType.MEDIA_CLIP}
         for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId, filters=f).items():
-            self.set_entry_ownership(lms_owned_entryId, kms_userId)
-            c = c + 1
+            try:
+                self.set_entry_ownership(lms_owned_entryId, kms_userId)
+            except Exception:
+                pass
+            else:
+                c = c + 1
+
         for kms_owned_entryId, entry in self.get_entries_by_user(kms_userId, filters=f).items():
             if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
-                self.set_entry_coeditors(kms_owned_entryId, lms_userId)
-                c = c + 1
+                try:
+                    self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+                except Exception:
+                    pass
+                else:
+                    c = c + 1
         return c
 
     def update_dual_user_list(self):
