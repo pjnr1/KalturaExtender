@@ -12,7 +12,7 @@ class SimpleLogger(object):
         self.pendingLog = []
 
     # Emulated private function
-    def _log(self, string, sender=None, date_color="cyan", color="white", on_color=None, p=False):
+    def _log(self, string, sender=None, date_color="cyan", sender_color="white", color="white", on_color=None, p=False):
         now = datetime.now()
         date = str(now)[:19]
         message = str(string)
@@ -20,7 +20,7 @@ class SimpleLogger(object):
             sender = sys._getframe().f_back.f_back.f_code.co_name
         log_string = "[{d}][{s}] {m}".format(d=colored(date, date_color),
                                              m=colored(message, color, on_color),
-                                             s=sender)
+                                             s=colored(sender, sender_color))
         if p:
             print(log_string)
         if self.logfile is not None:
@@ -40,7 +40,7 @@ class SimpleLogger(object):
         self._log(string, sender, color="yellow")
 
     def error(self, string, sender=None):
-        self._log(string, sender, color="red", date_color="red")
+        self._log(string, sender, color="red", date_color="red", sender_color="red")
 
     def critical(self, string, sender=None):
-        self._log(string, sender, on_color="on_red", date_color="white")
+        self._log(string, sender, on_color="on_red", date_color="red", sender_color="red")
