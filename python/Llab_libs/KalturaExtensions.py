@@ -146,7 +146,9 @@ class KalturaExtender:
             raise RuntimeError('KalturaExtender::client not loaded!')
         return self.client
 
-    def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
+    def update_entry(self, entryId, updates, entryType='media', modifierEntry=None):
+        if modifierEntry is None:
+            modifierEntry = KalturaMediaEntry()
         if updates is not None:
             for u in updates:
                 if hasattr(modifierEntry, u):
