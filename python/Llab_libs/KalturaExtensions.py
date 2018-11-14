@@ -103,11 +103,11 @@ class KalturaExtender:
     client = NotImplemented
     errorMailer = NotImplemented
     logger = NotImplemented
-    log_level = 0
+    log_level = NotImplemented
     ks = NotImplemented
     categoryIds = NotImplemented
 
-    def __init__(self, log=True, log_level=0, errormail=False):
+    def __init__(self, log=True, log_level=None, errormail=False):
         s = load_statics('kaltura.secret')
         self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
@@ -123,17 +123,18 @@ class KalturaExtender:
 
         if log:
             self.logger = SimpleLogger(logfile='../kaltura.log')
-
+        if log_level is None:
+            log_level = 0
         self.log_level = log_level
 
     @staticmethod
-    def apply_filter(filter, filters):
+    def apply_filter(filter_, filters):
         if filters is not None:
             for f in filters:
-                if hasattr(filter, f):
-                    setattr(filter, f, filters[f])
+                if hasattr(filter_, f):
+                    setattr(filter_, f, filters[f])
                 else:
-                    print('Warning:', filters[f], 'is not a valid KalturaMediaEntryFilter() attribute')
+                    print('Warning:', filters[f], 'is not a valid attribute')
 
     @staticmethod
     def comp_timestamps(t1, t2, r=0):
@@ -205,6 +206,7 @@ class KalturaExtender:
             log_str = "Found {0} {1}-entries with: {2}".format(i, entryType, filters)
         else:
             log_str = "Found {0} {1}-entries".format(i, entryType)
+        print(self.log_level, self.log_level < 1)
         if self.logger is not NotImplemented and self.log_level < 1:
             self.logger.info(log_str)
 
@@ -297,21 +299,19 @@ class KalturaExtender:
 
         return pairedEntries
 
-    def merge_dualstreams(self, verbose=True):
+    def merge_dualstreams(self, verbose=False):
         if verbose:
             print(str(_now()),
                   'Searching for DualStream entries')
 
-        client = KalturaExtender()
-
-        pairedEntries = client.get_dualstream_pairs()
+        pairedEntries = self.get_dualstream_pairs()
 
         updateErrorCount = 0
         errorList = []
         for parent, child in pairedEntries:
             try:
-                client.set_parent(parentId=parent[1].id, childId=child[1].id)
-                client.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
+                self.set_parent(parentId=parent[1].id, childId=child[1].id)
+                self.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
                 if self.logger is not NotImplemented:
                     self.logger.log('Updated (parent: {0}) and (child: {0})'.format(parent[0], child[0]),
                                     color="yellow")
