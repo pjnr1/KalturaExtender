@@ -1,3 +1,6 @@
+"""
+This file is kept as a playground for all minor non-automatic calls to the Kaltura API
+"""
 from Llab_libs.KalturaExtensions import *
 import json
 import time
