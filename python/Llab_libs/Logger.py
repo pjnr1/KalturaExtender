@@ -1,5 +1,6 @@
 from datetime import datetime
 from termcolor import colored
+from sys import _getframe as gf
 import sys
 
 
@@ -13,11 +14,21 @@ class SimpleLogger(object):
 
     # Emulated private function
     def _log(self, string, sender=None, date_color="cyan", sender_color="white", color="white", on_color=None, p=False):
+        """Internal logger function, should only be called be SimplerLogger-class methods.
+
+        :param string:          String to print
+        :param sender:          Current function the logger logs from
+        :param date_color:      Specifying color of the date-stamp
+        :param sender_color:    Specifying color of the sender
+        :param color:           Specifying color of the string
+        :param on_color:        Specifyinh on-color of the message
+        :param p:               If True, the logger prints the log-message
+        """
         now = datetime.now()
         date = str(now)[:19]
         message = str(string)
         if sender is None:
-            sender = sys._getframe().f_back.f_back.f_code.co_name
+            sender = gf().f_back.f_back.f_code.co_name
         log_string = "[{d}][{s}] {m}".format(d=colored(date, date_color),
                                              m=colored(message, color, on_color),
                                              s=colored(sender, sender_color))
@@ -27,8 +38,8 @@ class SimpleLogger(object):
             self.logfile.write(log_string + "\n")
             self.logfile.flush()
 
-    def log(self, string, sender=None, color="white", on_color=None, p=False):
-        self._log(string, sender, color, on_color, p)
+    def log(self, string, sender=None, color="white", on_color=None, print=False):
+        self._log(string=string, sender=sender, color=color, on_color=on_color, p=print)
 
     def debug(self, string, sender=None):
         self._log(string, sender, color="magneta")
