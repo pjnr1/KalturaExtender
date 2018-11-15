@@ -10,21 +10,8 @@ def now():
 
 
 if __name__ == '__main__':
-    print(now(), 'Running', __file__)
-    print()
-
-    print(now(), 'Setting up client')
-    client = KalturaExtender()
-    print()
-
-    print(now(), 'Get all categories')
+    client = KalturaExtender(log=True, log_level=1, errormail=False)
     path = '../csv_files/cats.csv'
     l = client.get_categories()
-    print()
-
-    print(now(), 'Write categories to csv')
     v = vars(l[random.choice(list(l.keys()))])
     export_to_csv(l, path, specificVariables=v)
-    print()
-
-    print(now(), 'done')

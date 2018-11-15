@@ -4,7 +4,7 @@ from functools import wraps
 from threading import Thread
 
 
-def daemonThread(func):
+def daemon(func):
     @wraps(func)
     def async_func(*args, **kwargs):
         func_hl = Thread(target=func, args=args, kwargs=kwargs)
