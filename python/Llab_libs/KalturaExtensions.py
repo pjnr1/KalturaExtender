@@ -103,11 +103,11 @@ class KalturaExtender:
     client = NotImplemented
     errorMailer = NotImplemented
     logger = NotImplemented
-    log_level = 0
+    log_level = NotImplemented
     ks = NotImplemented
     categoryIds = NotImplemented
 
-    def __init__(self, log=True, log_level=0, errormail=False):
+    def __init__(self, log=True, log_level=None, errormail=False):
         s = load_statics('kaltura.secret')
         self.categoryIds = load_statics('kaltura_categoryIds')
         # Initial API client setup
@@ -123,17 +123,18 @@ class KalturaExtender:
 
         if log:
             self.logger = SimpleLogger(logfile='../kaltura.log')
-
+        if log_level is None:
+            log_level = 0
         self.log_level = log_level
 
     @staticmethod
-    def apply_filter(filter, filters):
+    def apply_filter(filter_, filters):
         if filters is not None:
             for f in filters:
-                if hasattr(filter, f):
-                    setattr(filter, f, filters[f])
+                if hasattr(filter_, f):
+                    setattr(filter_, f, filters[f])
                 else:
-                    print('Warning:', filters[f], 'is not a valid KalturaMediaEntryFilter() attribute')
+                    print('Warning:', filters[f], 'is not a valid attribute')
 
     @staticmethod
     def comp_timestamps(t1, t2, r=0):
@@ -146,20 +147,22 @@ class KalturaExtender:
             raise RuntimeError('KalturaExtender::client not loaded!')
         return self.client
 
-    def update_entry(self, entryId, updates, entryType='media', modifierEntry=KalturaMediaEntry()):
+    def update_entry(self, entryId, updates, entryType='media', modifierEntry=None):
+        if modifierEntry is None:
+            modifierEntry = KalturaMediaEntry()
         if updates is not None:
             for u in updates:
                 if hasattr(modifierEntry, u):
                     setattr(modifierEntry, u, updates[u])
         try:
             res = getattr(self.get_client(), entryType).update(entryId, modifierEntry)
-            if self.logger is not NotImplemented and self.log_level < 1:
+            if self.logger is not NotImplemented and self.log_level < 2:
                 log_str = "Updating entry {0}: {1}".format(entryId, updates)
                 self.logger.warning(log_str)
         except Exception as e:
             if self.logger is not NotImplemented:
                 self.logger.error(e)
-            raise e
+            return e
 
         return res
 
@@ -185,7 +188,7 @@ class KalturaExtender:
         self.apply_filter(entryFilter, filters)
 
         if pager is None:
-            pager = NotImplemented
+            pager = KalturaFilterPager(pageSize=500)
 
         res = getattr(self.get_client(), entryType).list(entryFilter, pager)
 
@@ -203,6 +206,7 @@ class KalturaExtender:
             log_str = "Found {0} {1}-entries with: {2}".format(i, entryType, filters)
         else:
             log_str = "Found {0} {1}-entries".format(i, entryType)
+        print(self.log_level, self.log_level < 1)
         if self.logger is not NotImplemented and self.log_level < 1:
             self.logger.info(log_str)
 
@@ -295,21 +299,19 @@ class KalturaExtender:
 
         return pairedEntries
 
-    def merge_dualstreams(self, verbose=True):
+    def merge_dualstreams(self, verbose=False):
         if verbose:
             print(str(_now()),
                   'Searching for DualStream entries')
 
-        client = KalturaExtender()
-
-        pairedEntries = client.get_dualstream_pairs()
+        pairedEntries = self.get_dualstream_pairs()
 
         updateErrorCount = 0
         errorList = []
         for parent, child in pairedEntries:
             try:
-                client.set_parent(parentId=parent[1].id, childId=child[1].id)
-                client.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
+                self.set_parent(parentId=parent[1].id, childId=child[1].id)
+                self.update_entry(entryId=parent[1].id, updates={'categoriesIds': self.categoryIds.Recordings})
                 if self.logger is not NotImplemented:
                     self.logger.log('Updated (parent: {0}) and (child: {0})'.format(parent[0], child[0]),
                                     color="yellow")
@@ -395,7 +397,10 @@ class KalturaExtender:
         return dual_users
 
     def set_entry_ownership(self, entryId, userId):
-        return self.update_entry(entryId=entryId, updates={'userId': userId})
+        try:
+            return self.update_entry(entryId=entryId, updates={'userId': userId})
+        except Exception as e:
+            return e
 
     def set_entry_coeditors(self, entryId, userIdList):
         # Insert method to test
@@ -404,13 +409,23 @@ class KalturaExtender:
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
-        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId):
-            self.set_entry_ownership(lms_owned_entryId, kms_userId)
-            c = c + 1
-        for kms_owned_entryId,entry in self.get_entries_by_user(kms_userId).items():
-            if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
-                self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP}
+        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId, filters=f).items():
+            try:
+                self.set_entry_ownership(lms_owned_entryId, kms_userId)
+            except Exception:
+                pass
+            else:
                 c = c + 1
+
+        for kms_owned_entryId, entry in self.get_entries_by_user(kms_userId, filters=f).items():
+            if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
+                try:
+                    self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+                except Exception:
+                    pass
+                else:
+                    c = c + 1
         return c
 
     def update_dual_user_list(self):
