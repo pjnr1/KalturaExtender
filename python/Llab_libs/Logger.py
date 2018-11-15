@@ -5,6 +5,10 @@ import sys
 
 
 class SimpleLogger(object):
+    """
+    SimpleLogger is inspired from https://github.com/mtayler/simplelogger
+    However small edits are made for the usage needed in this particular project
+    """
     logfile = None
 
     def __init__(self, logfile=None):
