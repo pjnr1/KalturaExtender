@@ -1,6 +1,3 @@
-import time
-
-# Kaltura helpers
 from Llab_libs.KalturaExtensions import *
 
 if __name__ == '__main__':
