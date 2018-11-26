@@ -12,7 +12,7 @@ def now():
 
 
 if __name__ == '__main__':
-    client = KalturaExtender(log=True, log_level=1, errormail=False)
+    client = KalturaExtender(log=True, errormail=False)
 
     channels = client.get_dualstream_channels()
 

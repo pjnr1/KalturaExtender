@@ -10,7 +10,7 @@ def now():
 
 
 if __name__ == '__main__':
-    client = KalturaExtender(log=True, log_level=1, errormail=False)
+    client = KalturaExtender(log=True, errormail=False)
     path = '../csv_files/cats.csv'
     l = client.get_categories()
     v = vars(l[random.choice(list(l.keys()))])

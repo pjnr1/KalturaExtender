@@ -9,7 +9,7 @@ def now():
 
 
 if __name__ == '__main__':
-    client = KalturaExtender(log=True, log_level=1, errormail=False)
+    client = KalturaExtender(log=True, errormail=False)
     userList = client.get_users(printResult=False)
     v = vars(userList['admin'])
     path = '../csv_files/users.csv'

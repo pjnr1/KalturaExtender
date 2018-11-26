@@ -10,11 +10,17 @@ class SimpleLogger(object):
     However small edits are made for the usage needed in this particular project
     """
     logfile = None
+    ll = {'all': 0,
+          'debug': 1,
+          'info': 2,
+          'warning': 3,
+          'error': 4}
 
     def __init__(self, logfile=None):
         if logfile is not None:
             self.logfile = open(logfile, 'a')
         self.pendingLog = []
+        self.level = 'all'
 
     # Emulated private function
     def _log(self, string, sender=None, date_color="cyan", sender_color="white", color="white", on_color=None, p=False):
@@ -28,6 +34,9 @@ class SimpleLogger(object):
         :param on_color:        Specifyinh on-color of the message
         :param p:               If True, the logger prints the log-message
         """
+        if self.ll[self.level] > self.ll[str(gf().f_back.f_code.co_name)]:
+            return
+
         now = datetime.now()
         date = str(now)[:19]
         message = str(string)
@@ -59,3 +68,9 @@ class SimpleLogger(object):
 
     def critical(self, string, sender=None):
         self._log(string, sender, on_color="on_red", date_color="red", sender_color="red")
+
+    def set_level(self, log_level):
+        if log_level in self.ll:
+            self.level = log_level
+        else:
+            raise RuntimeError('Invalid log-level.')

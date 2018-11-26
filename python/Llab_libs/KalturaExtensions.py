@@ -103,7 +103,6 @@ class KalturaExtender:
     client = NotImplemented
     errorMailer = NotImplemented
     logger = NotImplemented
-    log_level = NotImplemented
     ks = NotImplemented
     categoryIds = NotImplemented
 
@@ -123,9 +122,8 @@ class KalturaExtender:
 
         if log:
             self.logger = SimpleLogger(logfile='../kaltura.log')
-        if log_level is None:
-            log_level = 0
-        self.log_level = log_level
+            if log_level is not None:
+                self.logger.set_level(log_level)
 
     @staticmethod
     def apply_filter(filter_, filters):
@@ -156,7 +154,7 @@ class KalturaExtender:
                     setattr(modifierEntry, u, updates[u])
         try:
             res = getattr(self.get_client(), entryType).update(entryId, modifierEntry)
-            if self.logger is not NotImplemented and self.log_level < 2:
+            if self.logger is not NotImplemented:
                 log_str = "Updating entry {0}: {1}".format(entryId, updates)
                 self.logger.warning(log_str)
         except Exception as e:
@@ -206,9 +204,7 @@ class KalturaExtender:
             log_str = "Found {0} {1}-entries with: {2}".format(i, entryType, filters)
         else:
             log_str = "Found {0} {1}-entries".format(i, entryType)
-        print(self.log_level, self.log_level < 1)
-        if self.logger is not NotImplemented and self.log_level < 1:
-            self.logger.info(log_str)
+        self.logger.info(log_str)
 
         return output
 
@@ -235,7 +231,7 @@ class KalturaExtender:
             log_str = "Found {0} admin users".format(i)
         else:
             log_str = "Found {0} users".format(i)
-        if self.logger is not NotImplemented and self.log_level < 2:
+        if self.logger is not NotImplemented:
             self.logger.info(log_str)
 
         return output
@@ -248,7 +244,7 @@ class KalturaExtender:
 
         res = self.get_entries(entryType='media', filters=filters)
 
-        if self.logger is not NotImplemented and self.log_level < 2:
+        if self.logger is not NotImplemented:
             log_str = "Found {0} entries by {1}".format(len(res), userId)
             self.logger.info(log_str)
 
@@ -465,7 +461,7 @@ class KalturaExtender:
                 if self.errorMailer is not NotImplemented:
                     self.errorMailer.send_error_mail(msg=e)
 
-        if self.logger is not NotImplemented and self.log_level < 3:
+        if self.logger is not NotImplemented:
             self.logger.info(log_str)
 
         return addedCount
@@ -481,7 +477,7 @@ class KalturaExtender:
                 d = self.set_dual_user_ownerships(user['kms_user'], user['lms_user'])
                 c = c + d
 
-        if self.logger is not NotImplemented and self.log_level < 3:
+        if self.logger is not NotImplemented:
             if c > 0:
                 log_str = "Updated {0} dual user entries".format(c)
             else:
