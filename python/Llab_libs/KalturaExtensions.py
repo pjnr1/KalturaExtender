@@ -145,6 +145,18 @@ class KalturaExtender:
             raise RuntimeError('KalturaExtender::client not loaded!')
         return self.client
 
+    def get_entry(self, entryId, entryType='media'):
+        try:
+            res = getattr(self.get_client(), entryType).get(entryId)
+            if self.logger is not NotImplemented:
+                log_str = "Fetching entry {0}".format(entryId)
+                self.logger.info(log_str)
+        except Exception as e:
+            if self.logger is not NotImplemented:
+                self.logger.error(e)
+            return e
+        return res
+
     def update_entry(self, entryId, updates, entryType='media', modifierEntry=None):
         if modifierEntry is None:
             modifierEntry = KalturaMediaEntry()
@@ -161,7 +173,6 @@ class KalturaExtender:
             if self.logger is not NotImplemented:
                 self.logger.error(e)
             return e
-
         return res
 
     def delete_entry(self, entryId, entryType):
@@ -400,8 +411,25 @@ class KalturaExtender:
 
     def set_entry_coeditors(self, entryId, userIdList):
         # Insert method to test
-        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': userIdList,
-                                                           'entitledUsersPublish': userIdList})
+        editUserIdList = userIdList
+        publishUserIdList = userIdList
+        entry = self.get_entry(entryId)
+
+        # editUserIdList
+        if isinstance(entry.entitledUsersEdit, list):
+            for user in entry.entitledUsersEdit:
+                editUserIdList.append(user)
+        else:
+            editUserIdList.append(entry.entitledUsersEdit)
+
+        if isinstance(entry.entitledUsersPublish, list):
+            for user in entry.entitledUsersPublish:
+                editUserIdList.append(user)
+        else:
+            editUserIdList.append(entry.entitledUsersPublish)
+
+        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': editUserIdList,
+                                                           'entitledUsersPublish': publishUserIdList})
 
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
