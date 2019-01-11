@@ -427,6 +427,7 @@ class KalturaExtender:
         return self.update_entry(entryId=entry.id, updates={'entitledUsersEdit': ','.join(newEntitledUsersEdit),
                                                             'entitledUsersPublish': ','.join(newEntitledUsersPublish)})
 
+    # todo: rewrite to grab all entry-lists with a multiRequest
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
         f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
