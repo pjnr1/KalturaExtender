@@ -146,6 +146,14 @@ class KalturaExtender:
         return self.client
 
     def get_entry(self, entryId, entryType='media'):
+        """
+        Get entry by it's entryId. Default entry-type is 'media', however any KalturaApi supported entry types can be
+        used.
+
+        :param entryId:     id of entry
+        :param entryType:   type of entry
+        :return: entryType.Object
+        """
         try:
             res = getattr(self.get_client(), entryType).get(entryId)
             if self.logger is not NotImplemented:
@@ -158,6 +166,14 @@ class KalturaExtender:
         return res
 
     def update_entry(self, entryId, updates, entryType='media', modifierEntry=None):
+        """
+
+        :param entryId:
+        :param updates:
+        :param entryType:
+        :param modifierEntry:
+        :return:
+        """
         if modifierEntry is None:
             modifierEntry = KalturaMediaEntry()
         if updates is not None:
@@ -176,12 +192,35 @@ class KalturaExtender:
         return res
 
     def delete_entry(self, entryId, entryType):
-        if self.logger is not NotImplemented:
-            log_str = "Deleting entry {0}".format(entryId)
-            self.logger.warning(log_str)
-        return getattr(self.get_client(), entryType).delete(entryId)
+        """
+        Delete entry by it's entryId and entryType
+
+        :param entryId:     id of entry
+        :param entryType:   type of entry
+        :return:
+        """
+        try:
+            res = getattr(self.get_client(), entryType).delete(entryId)
+            if self.logger is not NotImplemented:
+                log_str = "Deleting entry {0}".format(entryId)
+                self.logger.warning(log_str)
+        except Exception as e:
+            if self.logger is not NotImplemented:
+                self.logger.error(e)
+            return e
+        return res
 
     def get_entries(self, filters=None, entryType='media', printResult=False, specificVariables=None, pager=None):
+        """
+        Get list of entries based on filters. This also implements a print method for fast debugging.
+
+        :param filters:
+        :param entryType:
+        :param printResult:
+        :param specificVariables:
+        :param pager:
+        :return:
+        """
         if entryType == 'media':
             entryFilter = KalturaMediaEntryFilter()
         elif entryType == 'category':
