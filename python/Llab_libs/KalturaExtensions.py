@@ -10,6 +10,7 @@ from datetime import datetime
 # LearningLab libraries
 from Llab_libs import FuncDecorators
 from Llab_libs.statics_helper import load_statics
+from Llab_libs.meta_helper import *
 from Llab_libs.mail_helper import LLabMailHelper
 from Llab_libs.Logger import SimpleLogger
 
@@ -19,7 +20,7 @@ from Kaltura.KalturaClient.Base import *
 from Kaltura.KalturaClient.Plugins.Core import *
 
 __basepath__ = os.path.dirname(os.path.realpath(__file__))
-__dual_user_list__ = os.path.join(__basepath__, '../dual_user_list.json')
+__dual_user_list__ = os.path.join(__basepath__, 'json/dual_user_list.json')
 
 listOfUnixTimeStampVariables = ['createdAt', 'updatedAt', 'lastLoginTime',
                                 'statusUpdatedAt', 'deletedAt', 'mediaDate',
@@ -107,8 +108,12 @@ class KalturaExtender:
     categoryIds = NotImplemented
 
     def __init__(self, log=True, log_level=None, errormail=False):
+        # Load secrets
         s = load_statics('kaltura.secret')
+        # Load categoryIds
         self.categoryIds = load_statics('kaltura_categoryIds')
+        # Load class meta
+        self.meta = load_json('meta.json')
         # Initial API client setup
         cfg = KalturaConfiguration(s.partnerId)
         cfg.serviceUrl = s.serviceUrl
@@ -601,8 +606,28 @@ class KalturaExtender:
                 log_str = "No new dual user entries detected"
             self.logger.info(log_str)
 
-    def initRequestQueue(self):
+    def init_request_queue(self):
         self.get_client().startMultiRequest()
 
-    def sendRequestQueue(self):
+    def send_request_queue(self):
         return self.get_client().doMultiRequest()
+
+    def get_updated_entries(self, since):
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
+             'updatedAtGreaterThanOrEqual': since}
+        return self.get_entries(filters=f)
+
+    def get_updated_since_last_run(self):
+        meta = load_json('meta')
+        update_json('meta', {'lastRun': int(datetime.timestamp(datetime.now()))})
+        return self.get_updated_entries(meta['lastRun'])
+
+    def create_mix_entry(self, name):
+        mixEntry = KalturaMixEntry()
+        mixEntry.name = name
+        mixEntry.userId = 'jectli@llab.dtu.dk'
+        mixEntry.editorType = KalturaEditorType.ADVANCED
+        return self.get_client().mixing.add(mixEntry)
+
+    def append_mix_entry(self, mixEntryId, mediaEntryId):
+        return self.get_client().mixing.appendMediaEntry(mixEntryId, mediaEntryId)
