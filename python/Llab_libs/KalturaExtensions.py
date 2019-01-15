@@ -136,9 +136,7 @@ class KalturaExtender:
 
     @staticmethod
     def comp_timestamps(t1, t2, r=0):
-        t0 = t1 - t2
-        t0 = abs(t0)
-        return not t0 > r
+        return abs(t1 - t2) <= r
 
     def get_client(self):
         if self.client is NotImplemented:
@@ -448,32 +446,32 @@ class KalturaExtender:
         except Exception as e:
             return e
 
-    def set_entry_coeditors(self, entryId, userIdList):
+    def set_entry_coowners(self, entry, userIdList):
         # Insert method to test
-        editUserIdList = userIdList
-        publishUserIdList = userIdList
-        entry = self.get_entry(entryId)
+        newEntitledUsersEdit = list()
+        newEntitledUsersPublish = list()
 
-        # editUserIdList
-        if isinstance(entry.entitledUsersEdit, list):
-            for user in entry.entitledUsersEdit:
-                editUserIdList.append(user)
-        else:
-            editUserIdList.append(entry.entitledUsersEdit)
+        for uid in userIdList:
+            newEntitledUsersEdit.append(uid)
+            newEntitledUsersPublish.append(uid)
 
-        if isinstance(entry.entitledUsersPublish, list):
-            for user in entry.entitledUsersPublish:
-                editUserIdList.append(user)
-        else:
-            editUserIdList.append(entry.entitledUsersPublish)
+        eue = entry.entitledUsersEdit.split(',')
+        eup = entry.entitledUsersPublish.split(',')
 
-        return self.update_entry(entryId=entryId, updates={'entitledUsersEdit': editUserIdList,
-                                                           'entitledUsersPublish': publishUserIdList})
+        for uid in eue:
+            newEntitledUsersEdit.append(uid)
+        for uid in eup:
+            newEntitledUsersPublish.append(uid)
 
+        return self.update_entry(entryId=entry.id, updates={'entitledUsersEdit': ','.join(newEntitledUsersEdit),
+                                                            'entitledUsersPublish': ','.join(newEntitledUsersPublish)})
+
+    # todo: rewrite to grab all entry-lists with a multiRequest
     def set_dual_user_ownerships(self, kms_userId, lms_userId):
         c = 0
-        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP}
-        for lms_owned_entryId, entry in self.get_entries_by_user(lms_userId, filters=f).items():
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
+             'userIdEqual': lms_userId}
+        for lms_owned_entryId, entry in self.get_entries(filters=f).items():
             try:
                 self.set_entry_ownership(lms_owned_entryId, kms_userId)
             except Exception:
@@ -481,15 +479,67 @@ class KalturaExtender:
             else:
                 c = c + 1
 
-        for kms_owned_entryId, entry in self.get_entries_by_user(kms_userId, filters=f).items():
-            if lms_userId not in entry.entitledUsersEdit or lms_userId not in entry.entitledUsersPublish:
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
+             'userIdEqual': kms_userId}
+        for kms_owned_entryId, entry in self.get_entries(filters=f).items():
+            if lms_userId not in entry.entitledUsersEdit.split(',') or \
+               lms_userId not in entry.entitledUsersPublish.split(','):
                 try:
-                    self.set_entry_coeditors(kms_owned_entryId, lms_userId)
+                    self.set_entry_coowners(entry, [kms_userId, lms_userId])
                 except Exception:
                     pass
                 else:
                     c = c + 1
+
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
+             'entitledUsersEditMatchOr': ','.join([kms_userId, lms_userId])}
+        for entryId, entry in self.get_entries(filters=f).items():
+            if kms_userId not in entry.entitledUsersEdit.split(',') or \
+               lms_userId not in entry.entitledUsersEdit.split(','):
+                try:
+                    self.add_entry_coeditor(entry, [kms_userId, lms_userId])
+                except Exception:
+                    pass
+                else:
+                    c = c + 1
+
+        f = {'typeEqual': KalturaEntryType.MEDIA_CLIP,
+             'entitledUsersPublishMatchOr': ','.join([kms_userId, lms_userId])}
+        for entryId, entry in self.get_entries(filters=f).items():
+            if kms_userId not in entry.entitledUsersPublish.split(',') or \
+               lms_userId not in entry.entitledUsersPublish.split(','):
+                try:
+                    self.add_entry_copublisher(entry, [kms_userId, lms_userId])
+                except:
+                    pass
+                else:
+                    c = c + 1
+
         return c
+
+    def add_entry_coeditor(self, entry, userId):
+        coEditors = entry.entitledUsersEdit.split(',')
+        c = 0
+        for uId in userId:
+            if uId not in coEditors:
+                coEditors.append(uId)
+                c = c + 1
+        if c is 0:
+            return
+        coEditors = ','.join(coEditors)
+        return self.update_entry(entryId=entry.id, updates={'entitledUsersEdit': coEditors})
+
+    def add_entry_copublisher(self, entry, userId):
+        coPublishers = entry.entitledUsersPublish.split(',')
+        c = 0
+        for uId in userId:
+            if uId not in coPublishers:
+                coPublishers.append(uId)
+                c = c + 1
+        if c is 0:
+            return
+        coPublishers = ','.join(coPublishers)
+        return self.update_entry(entryId=entry.id, updates={'entitledUsersPublish': coPublishers})
 
     def update_dual_user_list(self):
         user_list = None
@@ -550,3 +600,9 @@ class KalturaExtender:
             else:
                 log_str = "No new dual user entries detected"
             self.logger.info(log_str)
+
+    def initRequestQueue(self):
+        self.get_client().startMultiRequest()
+
+    def sendRequestQueue(self):
+        return self.get_client().doMultiRequest()
