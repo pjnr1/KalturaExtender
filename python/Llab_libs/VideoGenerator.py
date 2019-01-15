@@ -46,7 +46,7 @@ if __name__ == '__main__':
     tg = IntroTextGenerator('1080')
     tg.draw_title_text('Title text her')
     tg.draw_course_text('01005 Matematik 1 - E18/F19')
-    tg.save_image('test1.png')
+    tg.save_image('media/test1.png')
 
 
 ffmpeg_command = 'ffmpeg -i video.mp4 -i image.png -filter_complex "[0:v][1:v] overlay=0:0:enable=" -c:a copy output.mp4'
