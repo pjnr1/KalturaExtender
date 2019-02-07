@@ -14,7 +14,8 @@ class SimpleLogger(object):
           'debug': 1,
           'info': 2,
           'warning': 3,
-          'error': 4}
+          'error': 4,
+          'critical': 5}
 
     def __init__(self, logfile=None):
         if logfile is not None:
