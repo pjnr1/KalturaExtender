@@ -32,11 +32,6 @@ class SkipFilter(object):
         raise ValueError
 
 
-import io
-
-preprocessor = SkipFilter([io.BytesIO], ["_io"])  # double-whammy skip of io.BytesIO
-
-
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--kaltura', action='store_const', const=True)
@@ -49,15 +44,15 @@ if __name__ == '__main__':
             res = client.get_entries(filters={'categoriesIdsMatchAnd': args.categoryId})
             json_prep = dict()
             for key, item in res.items():
-                preprocessor = SkipFilter([],['status',
-                                              'moderationStatus',
-                                              'type',
-                                              'licenseType',
-                                              'replacementStatus',
-                                              'operationAttributes',
-                                              'displayInSearch',
-                                              'mediaType',
-                                              'sourceType',
-                                              'searchProviderType'])
+                preprocessor = SkipFilter([], ['status',
+                                               'moderationStatus',
+                                               'type',
+                                               'licenseType',
+                                               'replacementStatus',
+                                               'operationAttributes',
+                                               'displayInSearch',
+                                               'mediaType',
+                                               'sourceType',
+                                               'searchProviderType'])
                 json_prep[key] = item.__dict__
             print(json.dumps(preprocessor.filter(json_prep)))

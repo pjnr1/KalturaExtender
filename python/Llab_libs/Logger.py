@@ -10,7 +10,8 @@ class SimpleLogger(object):
     However small edits are made for the usage needed in this particular project
     """
     logfile = None
-    ll = {'all': 0,
+    ll = {'log': -1,
+          'all': 0,
           'debug': 1,
           'info': 2,
           'warning': 3,
