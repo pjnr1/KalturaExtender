@@ -16,8 +16,8 @@ class SkipFilter(object):
         self.allow_empty = allow_empty  # if True include empty filtered structures
 
     def filter(self, data):
-        print(data.__dict__)
-        if isinstance(data, collections.Mapping):
+        print(data)
+        if isinstance(data, dict):
             result = {}  # dict-like, use dict as a base
             for k, v in data.items():
                 if k in self.keys or isinstance(v, self.types):  # skip key/type
