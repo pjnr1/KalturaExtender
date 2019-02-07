@@ -31,6 +31,7 @@ class SkipFilter(object):
             return data  # return it as-is, hope for the best...
         raise ValueError('Empty data')
 
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--kaltura', action='store_const', const=True)
@@ -43,7 +44,6 @@ if __name__ == '__main__':
             res = client.get_entries(filters={'categoriesIdsMatchAnd': args.categoryId})
             json_prep = dict()
             for key, item in res.items():
-                print(item.__dict__)
                 json_prep[key] = item.__dict__
             preprocessor = SkipFilter([], ['status',
                                            'moderationStatus',
