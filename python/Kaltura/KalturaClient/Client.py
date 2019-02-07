@@ -270,6 +270,15 @@ class KalturaClient(object):
 
     @staticmethod
     def openRequestUrl(url, params, files, requestHeaders, requestTimeout):
+        # DEBUG
+        # print(url)
+        # print(params.toJson())
+        # print(files)
+        # print(requestHeaders)
+        # print(requestTimeout)
+        # print('-*'*10)
+        # ENDOF DEBUG
+
         requestHeaders['Accept'] = 'text/xml'
         requestHeaders['Accept-encoding'] = 'gzip'
         try:

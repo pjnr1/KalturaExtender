@@ -16,8 +16,7 @@ class SkipFilter(object):
         self.allow_empty = allow_empty  # if True include empty filtered structures
 
     def filter(self, data):
-        print(data)
-        if isinstance(data, dict):
+        if isinstance(data, collections.Mapping):
             result = {}  # dict-like, use dict as a base
             for k, v in data.items():
                 if k in self.keys or isinstance(v, self.types):  # skip key/type
@@ -30,9 +29,7 @@ class SkipFilter(object):
                 return result
         else:  # we don't know how to traverse this structure...
             return data  # return it as-is, hope for the best...
-        print("what the hell")
-        raise ValueError
-
+        raise ValueError('Empty data')
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -46,6 +43,7 @@ if __name__ == '__main__':
             res = client.get_entries(filters={'categoriesIdsMatchAnd': args.categoryId})
             json_prep = dict()
             for key, item in res.items():
+                print(item.__dict__)
                 json_prep[key] = item.__dict__
             preprocessor = SkipFilter([], ['status',
                                            'moderationStatus',
@@ -56,5 +54,6 @@ if __name__ == '__main__':
                                            'displayInSearch',
                                            'mediaType',
                                            'sourceType',
-                                           'searchProviderType'])
+                                           'searchProviderType'],
+                                      allow_empty=True)
             print(json.dumps(preprocessor.filter(json_prep)))
