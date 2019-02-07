@@ -29,6 +29,7 @@ class SkipFilter(object):
                 return result
         else:  # we don't know how to traverse this structure...
             return data  # return it as-is, hope for the best...
+        print("what the hell")
         raise ValueError
 
 
